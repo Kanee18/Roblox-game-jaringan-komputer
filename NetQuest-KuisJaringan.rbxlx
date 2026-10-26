@@ -1,0 +1,3229 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="1">
+      <Properties>
+        <string name="Name">QuizShared</string>
+      </Properties>
+      <Item class="ModuleScript" referent="2">
+        <Properties>
+          <string name="Name">Config</string>
+          <string name="Source"><![CDATA[--[[
+	KONFIGURASI GAME "NET QUEST: Kuis Jaringan Komputer & Internet"
+	Ubah angka/teks di file ini untuk menyesuaikan game dengan kelas Anda.
+	Tidak perlu menyentuh script lain.
+]]
+
+local Config = {}
+
+---------------------------------------------------------------------
+-- PENGATURAN KUIS
+---------------------------------------------------------------------
+Config.QuestionsPerRound = 10 -- jumlah soal tiap ronde (pilihan guru: 5/10/15/20)
+Config.QuestionTime = 20 -- detik untuk soal pilihan ganda
+Config.TrueFalseTime = 12 -- detik untuk soal Benar/Salah
+Config.RevealTime = 3 -- detik animasi jawaban benar (kotak salah jatuh)
+Config.ExplanationTime = 7 -- detik menampilkan penjelasan materi
+Config.IntermissionTime = 30 -- detik jeda sebelum ronde dimulai
+Config.RoundEndTime = 15 -- detik menampilkan hasil akhir ronde
+Config.MinPlayers = 1 -- minimal pemain agar ronde otomatis dimulai
+Config.AutoStart = true -- true = ronde mulai otomatis; false = tunggu guru menekan "Mulai"
+
+---------------------------------------------------------------------
+-- GURU (bisa membuka Panel Guru)
+-- Pemilik game otomatis menjadi guru. Tambahkan akun guru lain di sini.
+---------------------------------------------------------------------
+Config.TeacherUserIds = {
+	-- 12345678,
+}
+Config.TeacherNames = {
+	-- "NamaAkunGuru",
+}
+Config.GroupTeacherMinRank = 254 -- jika game milik Grup: rank minimal untuk jadi guru
+Config.StudioEveryoneTeacher = true -- saat dites di Roblox Studio, semua pemain jadi guru
+
+---------------------------------------------------------------------
+-- SKOR
+---------------------------------------------------------------------
+Config.BasePoints = 100 -- poin jawaban benar
+Config.MaxSpeedBonus = 50 -- bonus maksimal jika menjawab cepat
+Config.StreakBonus = 10 -- bonus per jawaban benar berturut-turut
+Config.MaxStreakBonus = 50 -- batas bonus streak
+Config.BossMultiplier = 2 -- soal terakhir (SOAL BOS) poinnya dikali angka ini
+Config.HintEveryStreak = 3 -- tiap benar 3x berturut-turut dapat 1 bantuan 50:50
+Config.MaxHints = 2 -- maksimal bantuan yang bisa disimpan
+Config.StartingHints = 1 -- bantuan yang dimiliki saat ronde dimulai
+
+---------------------------------------------------------------------
+-- PENYIMPANAN (DataStore) untuk XP & Gelar
+-- Agar berfungsi: Game Settings > Security > Enable Studio Access to API Services
+-- dan game sudah dipublikasikan. Jika gagal, game tetap berjalan tanpa simpan.
+---------------------------------------------------------------------
+Config.UseDataStore = true
+Config.DataStoreName = "NetQuest_KuisJaringan_v1"
+
+-- Gelar berdasarkan total XP (XP = total poin dari semua ronde)
+Config.Ranks = {
+	{ xp = 0, name = "Kabel Pemula", color = Color3.fromRGB(200, 200, 200) },
+	{ xp = 500, name = "Hub Junior", color = Color3.fromRGB(120, 220, 255) },
+	{ xp = 1500, name = "Switch Cekatan", color = Color3.fromRGB(110, 255, 150) },
+	{ xp = 3000, name = "Router Hebat", color = Color3.fromRGB(255, 220, 90) },
+	{ xp = 6000, name = "Server Master", color = Color3.fromRGB(255, 140, 70) },
+	{ xp = 10000, name = "Legenda Internet", color = Color3.fromRGB(255, 90, 220) },
+}
+
+---------------------------------------------------------------------
+-- TOPIK MATERI (Informatika Kelas 7 - Jaringan Komputer & Internet)
+---------------------------------------------------------------------
+Config.Topics = {
+	{ id = "campuran", name = "Campuran (Semua Materi)", icon = "🎲", color = Color3.fromRGB(180, 120, 255) },
+	{ id = "konsep", name = "Konsep Jaringan Komputer", icon = "🖧", color = Color3.fromRGB(80, 170, 255) },
+	{ id = "topologi", name = "Topologi Jaringan", icon = "🕸️", color = Color3.fromRGB(255, 160, 60) },
+	{ id = "perangkat", name = "Perangkat Jaringan", icon = "📡", color = Color3.fromRGB(90, 220, 140) },
+	{ id = "internet", name = "Internet & Cara Kerjanya", icon = "🌐", color = Color3.fromRGB(60, 210, 230) },
+	{ id = "koneksi", name = "Koneksi Kabel & Nirkabel", icon = "📶", color = Color3.fromRGB(255, 210, 70) },
+	{ id = "keamanan", name = "Keamanan & Proteksi Data", icon = "🔒", color = Color3.fromRGB(255, 90, 110) },
+}
+
+function Config.GetTopic(id)
+	for _, topic in ipairs(Config.Topics) do
+		if topic.id == id then
+			return topic
+		end
+	end
+	return Config.Topics[1]
+end
+
+---------------------------------------------------------------------
+-- WARNA KOTAK JAWABAN (A, B, C, D)
+---------------------------------------------------------------------
+Config.PadColors = {
+	Color3.fromRGB(235, 64, 82), -- A merah
+	Color3.fromRGB(45, 125, 245), -- B biru
+	Color3.fromRGB(245, 185, 30), -- C kuning
+	Color3.fromRGB(40, 190, 95), -- D hijau
+}
+Config.PadLetters = { "A", "B", "C", "D" }
+Config.TrueColor = Color3.fromRGB(40, 190, 95)
+Config.FalseColor = Color3.fromRGB(235, 64, 82)
+
+---------------------------------------------------------------------
+-- SUARA (boleh diganti dengan ID audio dari Toolbox, contoh "rbxassetid://123")
+-- Kosongkan ("") untuk mematikan suara tertentu.
+---------------------------------------------------------------------
+Config.Sounds = {
+	Tick = "rbxasset://sounds/clickfast.wav",
+	Correct = "rbxasset://sounds/electronicpingshort.wav",
+	Wrong = "rbxasset://sounds/uuhhh.mp3",
+	Question = "rbxasset://sounds/button.wav",
+	Fanfare = "rbxasset://sounds/electronicpingshort.wav",
+	Hint = "rbxasset://sounds/snap.wav",
+}
+Config.MusicId = "" -- isi dengan ID musik latar dari Toolbox jika ingin ada musik
+
+---------------------------------------------------------------------
+-- TAMPILAN DUNIA
+---------------------------------------------------------------------
+Config.ClockTime = 17.4 -- waktu langit (0-24). 17-18 = senja, lampu neon terlihat keren
+Config.GameTitle = "NET QUEST"
+Config.GameSubtitle = "Kuis Jaringan Komputer & Internet • Informatika Kelas 7"
+
+return Config
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">Materi</string>
+          <string name="Source"><![CDATA[--[[
+	RINGKASAN MATERI untuk papan "Zona Materi" di lobi.
+	Siswa bisa membaca papan ini saat jeda sebelum kuis dimulai.
+	Setiap topik: judul + daftar poin singkat (usahakan maksimal 7 poin agar terbaca).
+]]
+
+return {
+	konsep = {
+		"Jaringan komputer = 2 perangkat atau lebih yang saling terhubung untuk berbagi data dan sumber daya.",
+		"Manfaat: berbagi file, printer, dan koneksi internet, serta berkomunikasi (chat, email, video call).",
+		"PAN (Personal Area Network): jangkauan sangat dekat ±10 m, contoh HP ke earphone Bluetooth.",
+		"LAN (Local Area Network): dalam satu ruangan/gedung, contoh lab komputer sekolah.",
+		"MAN (Metropolitan Area Network): mencakup satu kota.",
+		"WAN (Wide Area Network): antarkota, antarnegara, bahkan antarbenua. Internet adalah WAN terbesar.",
+		"Client-Server: ada komputer pusat (server) yang melayani. Peer-to-Peer: semua komputer setara.",
+	},
+	topologi = {
+		"Topologi = bentuk atau susunan cara perangkat dihubungkan dalam jaringan.",
+		"BUS: semua komputer di satu kabel utama (backbone). Kabel utama putus = jaringan mati.",
+		"STAR (bintang): semua terhubung ke pusat (switch/hub). Paling banyak dipakai.",
+		"RING (cincin): komputer membentuk lingkaran, data berputar dari satu komputer ke komputer berikutnya.",
+		"MESH: setiap komputer terhubung ke semua komputer lain. Paling andal tapi butuh banyak kabel.",
+		"Rumus kabel mesh: n x (n - 1) / 2. Contoh 4 komputer = 4 x 3 / 2 = 6 kabel.",
+		"TREE (pohon): gabungan beberapa topologi star yang bertingkat seperti cabang pohon.",
+	},
+	perangkat = {
+		"NIC (Network Interface Card): kartu jaringan di komputer; setiap NIC punya MAC Address unik.",
+		"Kabel UTP + konektor RJ-45: kabel jaringan yang paling umum di LAN.",
+		"HUB: meneruskan data ke SEMUA komputer yang terhubung.",
+		"SWITCH: lebih pintar dari hub, mengirim data HANYA ke komputer tujuan.",
+		"ROUTER: menghubungkan jaringan yang berbeda dan memilih jalur (rute) terbaik untuk data.",
+		"MODEM: Modulator-Demodulator, mengubah sinyal digital <-> analog agar bisa terhubung ke internet.",
+		"ACCESS POINT: memancarkan sinyal WiFi. REPEATER: memperkuat sinyal agar jangkauan lebih jauh.",
+	},
+	internet = {
+		"Internet = Interconnected Network, jaringan komputer global yang menghubungkan seluruh dunia.",
+		"Berawal dari ARPANET (1969), proyek Departemen Pertahanan Amerika Serikat.",
+		"ISP (Internet Service Provider) = perusahaan penyedia layanan akses internet.",
+		"IP Address = alamat unik perangkat di jaringan. Contoh IPv4: 192.168.1.10 (4 angka 0-255).",
+		"DNS = penerjemah nama domain (www.contoh.sch.id) menjadi IP Address, seperti buku telepon.",
+		"Data dikirim dalam potongan kecil bernama PAKET. Aturan komunikasinya disebut PROTOKOL (TCP/IP).",
+		"HTTPS = HTTP yang aman (terenkripsi), ditandai ikon gembok. Browser = aplikasi untuk membuka web.",
+	},
+	koneksi = {
+		"KABEL: UTP (umum di LAN), koaksial, dan serat optik (fiber optic).",
+		"Fiber optic mengirim data dengan CAHAYA: sangat cepat dan jarak jauh, dipakai kabel bawah laut.",
+		"WiFi: nirkabel memakai gelombang radio dari router/access point. Nama jaringan WiFi = SSID.",
+		"Bluetooth: nirkabel jarak dekat (±10 m), untuk earphone, speaker, atau kirim file.",
+		"Seluler (4G/5G): internet dari menara BTS operator. Hotspot/tethering = HP membagi internet.",
+		"Kabel: stabil & cepat, tapi kurang fleksibel. Nirkabel: fleksibel, tapi bisa terganggu jarak/penghalang.",
+		"Kecepatan internet diukur dalam bps (bit per second), misalnya Mbps (megabit per detik).",
+	},
+	keamanan = {
+		"Data pribadi (NIK, alamat, tanggal lahir, password, kode OTP) jangan dibagikan sembarangan!",
+		"Password kuat: minimal 8 karakter, campuran huruf besar, kecil, angka, dan simbol.",
+		"ENKRIPSI: mengubah data menjadi kode acak agar tak terbaca tanpa kunci. DEKRIPSI = kebalikannya.",
+		"Caesar Cipher: enkripsi dengan menggeser huruf. Geser 1: A->B, B->C, jadi ABC -> BCD.",
+		"PHISHING: penipuan lewat pesan/link palsu untuk mencuri data. MALWARE: virus, worm, trojan, ransomware.",
+		"Aktifkan verifikasi 2 langkah (2FA). Hati-hati login akun penting di WiFi publik.",
+		"Cloud storage (contoh Google Drive) = simpan data di internet, bisa diakses dari mana saja.",
+	},
+}
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="4">
+        <Properties>
+          <string name="Name">Questions</string>
+          <string name="Source"><![CDATA[--[[
+	BANK SOAL - Jaringan Komputer & Internet (Informatika Kelas 7 SMP)
+
+	CARA MENAMBAH SOAL:
+	1) Pilihan ganda (4 pilihan):
+	   { topik = "konsep", lv = 1, q = "Pertanyaan?", c = { "JAWABAN BENAR", "salah", "salah", "salah" }, e = "Penjelasan." },
+	   -> Jawaban BENAR selalu ditulis PERTAMA. Urutan pilihan diacak otomatis di dalam game.
+	2) Benar / Salah:
+	   { topik = "konsep", lv = 1, bs = true, q = "Pernyataan.", jawab = true, e = "Penjelasan." },
+	   -> jawab = true jika pernyataan BENAR, false jika SALAH.
+
+	topik : konsep / topologi / perangkat / internet / koneksi / keamanan
+	lv    : tingkat kesulitan 1 (mudah), 2 (sedang), 3 (sulit). Soal diurutkan dari mudah ke sulit.
+	e     : penjelasan singkat yang muncul setelah jawaban diungkap (penting untuk belajar!)
+]]
+
+local Questions = {}
+
+Questions.List = {
+	---------------------------------------------------------------
+	-- KONSEP JARINGAN KOMPUTER
+	---------------------------------------------------------------
+	{ topik = "konsep", lv = 1, q = "Apa yang dimaksud dengan jaringan komputer?",
+		c = { "Dua atau lebih perangkat yang terhubung untuk berbagi data", "Satu komputer yang memiliki banyak aplikasi", "Kumpulan kabel listrik di rumah", "Program untuk mengetik dokumen" },
+		e = "Jaringan komputer adalah dua atau lebih perangkat yang saling terhubung sehingga bisa berbagi data dan sumber daya." },
+	{ topik = "konsep", lv = 1, q = "Jaringan komputer di dalam satu lab komputer sekolah termasuk jenis...",
+		c = { "LAN", "WAN", "MAN", "Internet" },
+		e = "LAN (Local Area Network) mencakup area kecil seperti satu ruangan, gedung, atau sekolah." },
+	{ topik = "konsep", lv = 1, q = "Menghubungkan HP ke earphone Bluetooth adalah contoh jaringan...",
+		c = { "PAN", "LAN", "MAN", "WAN" },
+		e = "PAN (Personal Area Network) adalah jaringan pribadi jarak sangat dekat, sekitar 10 meter." },
+	{ topik = "konsep", lv = 2, q = "Jaringan yang mencakup satu kota, misalnya jaringan CCTV milik pemerintah kota, disebut...",
+		c = { "MAN", "PAN", "LAN", "Peer-to-Peer" },
+		e = "MAN (Metropolitan Area Network) mencakup wilayah satu kota." },
+	{ topik = "konsep", lv = 2, q = "Jaringan dengan jangkauan paling LUAS adalah...",
+		c = { "WAN", "MAN", "LAN", "PAN" },
+		e = "Urutan dari yang paling sempit: PAN < LAN < MAN < WAN. WAN bisa mencakup antarnegara." },
+	{ topik = "konsep", lv = 1, bs = true, q = "Internet adalah contoh jaringan WAN yang paling besar di dunia.", jawab = true,
+		e = "Benar! Internet menghubungkan jaringan di seluruh dunia, sehingga termasuk WAN terbesar." },
+	{ topik = "konsep", lv = 1, bs = true, q = "Salah satu manfaat jaringan komputer adalah satu printer bisa dipakai bersama oleh banyak komputer.", jawab = true,
+		e = "Benar! Berbagi printer, file, dan koneksi internet adalah manfaat utama jaringan komputer." },
+	{ topik = "konsep", lv = 2, q = "Jaringan di mana semua komputer memiliki kedudukan setara (tanpa server pusat) disebut...",
+		c = { "Peer-to-Peer", "Client-Server", "Topologi Bus", "Router" },
+		e = "Pada Peer-to-Peer semua komputer setara. Pada Client-Server ada server pusat yang melayani client." },
+	{ topik = "konsep", lv = 2, bs = true, q = "Pada jaringan Client-Server, komputer yang melayani permintaan disebut client.", jawab = false,
+		e = "Salah! Komputer yang MELAYANI disebut SERVER. Client adalah komputer yang MEMINTA layanan." },
+	{ topik = "konsep", lv = 3, q = "Bank yang menghubungkan kantor cabangnya di Jakarta, Medan, dan Makassar menggunakan jaringan...",
+		c = { "WAN", "LAN", "PAN", "MAN" },
+		e = "Karena menghubungkan beberapa kota yang berjauhan (antarpulau), jaringannya adalah WAN." },
+	{ topik = "konsep", lv = 3, q = "Berikut ini yang BUKAN manfaat jaringan komputer adalah...",
+		c = { "Membuat komputer kebal dari virus", "Berbagi file dengan cepat", "Berbagi koneksi internet", "Berkomunikasi lewat email" },
+		e = "Jaringan justru bisa menjadi jalan masuk virus. Karena itu keamanan jaringan tetap harus dijaga." },
+
+	---------------------------------------------------------------
+	-- TOPOLOGI JARINGAN
+	---------------------------------------------------------------
+	{ topik = "topologi", lv = 1, q = "Bentuk atau susunan hubungan antar perangkat dalam jaringan disebut...",
+		c = { "Topologi", "Protokol", "Bandwidth", "Domain" },
+		e = "Topologi adalah bentuk/susunan cara perangkat-perangkat dihubungkan dalam jaringan." },
+	{ topik = "topologi", lv = 1, q = "Topologi di mana semua komputer terhubung ke satu titik pusat (switch/hub) adalah...",
+		c = { "Star", "Bus", "Ring", "Mesh" },
+		e = "Topologi Star (bintang) memiliki pusat berupa switch atau hub, bentuknya seperti bintang." },
+	{ topik = "topologi", lv = 1, q = "Topologi yang memakai satu kabel utama (backbone) untuk semua komputer adalah...",
+		c = { "Bus", "Star", "Tree", "Mesh" },
+		e = "Topologi Bus memakai satu kabel utama. Ujung kabelnya dipasang terminator." },
+	{ topik = "topologi", lv = 1, q = "Topologi yang bentuknya melingkar seperti cincin adalah...",
+		c = { "Ring", "Star", "Bus", "Tree" },
+		e = "Pada topologi Ring, komputer membentuk lingkaran dan data berputar dari satu komputer ke komputer berikutnya." },
+	{ topik = "topologi", lv = 2, q = "Pada topologi Star, apa yang terjadi jika switch pusatnya rusak?",
+		c = { "Seluruh jaringan terganggu", "Hanya satu komputer yang terganggu", "Jaringan menjadi lebih cepat", "Tidak terjadi apa-apa" },
+		e = "Switch/hub adalah pusat topologi Star. Jika pusatnya rusak, semua komputer tidak bisa saling terhubung." },
+	{ topik = "topologi", lv = 2, bs = true, q = "Pada topologi Star, jika satu kabel komputer putus, maka seluruh jaringan ikut mati.", jawab = false,
+		e = "Salah! Pada topologi Star, kabel yang putus hanya mengganggu satu komputer itu saja." },
+	{ topik = "topologi", lv = 2, bs = true, q = "Pada topologi Bus, jika kabel utama (backbone) putus maka jaringan akan terganggu.", jawab = true,
+		e = "Benar! Semua komputer bergantung pada kabel utama, jadi kabel utama putus = jaringan terganggu." },
+	{ topik = "topologi", lv = 2, q = "Topologi yang setiap komputernya terhubung langsung ke SEMUA komputer lain adalah...",
+		c = { "Mesh", "Star", "Bus", "Ring" },
+		e = "Topologi Mesh sangat andal karena banyak jalur cadangan, tetapi membutuhkan banyak kabel." },
+	{ topik = "topologi", lv = 2, q = "Topologi gabungan beberapa topologi star yang bertingkat seperti cabang disebut...",
+		c = { "Tree", "Ring", "Bus", "Mesh" },
+		e = "Topologi Tree (pohon) tersusun bertingkat, cocok untuk gedung dengan banyak lantai/ruangan." },
+	{ topik = "topologi", lv = 3, q = "Berapa jumlah kabel yang dibutuhkan untuk menghubungkan 4 komputer dengan topologi Mesh?",
+		c = { "6", "4", "8", "12" },
+		e = "Rumus Mesh: n x (n - 1) / 2 = 4 x 3 / 2 = 6 kabel." },
+	{ topik = "topologi", lv = 3, q = "Berapa kabel yang dibutuhkan untuk menghubungkan 5 komputer dengan topologi Mesh?",
+		c = { "10", "5", "20", "25" },
+		e = "Rumus Mesh: n x (n - 1) / 2 = 5 x 4 / 2 = 10 kabel." },
+	{ topik = "topologi", lv = 3, q = "Kekurangan utama topologi Mesh adalah...",
+		c = { "Membutuhkan kabel yang sangat banyak", "Jika satu kabel putus semua mati", "Tidak bisa dipakai berbagi data", "Hanya bisa 2 komputer" },
+		e = "Mesh paling andal, tetapi mahal dan rumit karena setiap komputer harus terhubung ke semua komputer lain." },
+
+	---------------------------------------------------------------
+	-- PERANGKAT JARINGAN
+	---------------------------------------------------------------
+	{ topik = "perangkat", lv = 1, q = "Perangkat yang menghubungkan dua jaringan berbeda dan menentukan jalur data adalah...",
+		c = { "Router", "Hub", "Mouse", "Speaker" },
+		e = "Router menghubungkan jaringan berbeda (misal jaringan rumah ke internet) dan memilih rute terbaik." },
+	{ topik = "perangkat", lv = 1, q = "Konektor yang dipasang di ujung kabel UTP adalah...",
+		c = { "RJ-45", "USB", "HDMI", "VGA" },
+		e = "Kabel UTP menggunakan konektor RJ-45 untuk dipasang ke komputer, switch, atau router." },
+	{ topik = "perangkat", lv = 1, q = "Kartu jaringan yang dipasang di komputer agar bisa terhubung ke jaringan disebut...",
+		c = { "NIC (Network Interface Card)", "VGA Card", "Sound Card", "RAM" },
+		e = "NIC atau LAN Card adalah kartu jaringan. Setiap NIC memiliki alamat fisik unik bernama MAC Address." },
+	{ topik = "perangkat", lv = 2, q = "Apa perbedaan SWITCH dengan HUB?",
+		c = { "Switch mengirim data hanya ke komputer tujuan", "Switch mengirim data ke semua komputer", "Hub lebih pintar daripada switch", "Switch tidak memakai kabel" },
+		e = "Hub meneruskan data ke SEMUA port, sedangkan switch lebih pintar karena hanya mengirim ke port TUJUAN." },
+	{ topik = "perangkat", lv = 2, q = "Modem adalah singkatan dari...",
+		c = { "Modulator - Demodulator", "Modern Demo", "Mode Memori", "Monitor Demodulasi" },
+		e = "Modem = Modulator-Demodulator, mengubah sinyal digital menjadi analog dan sebaliknya." },
+	{ topik = "perangkat", lv = 2, q = "Perangkat yang memancarkan sinyal WiFi agar laptop dan HP bisa terhubung tanpa kabel adalah...",
+		c = { "Access Point", "Hub", "Printer", "Kabel UTP" },
+		e = "Access Point memancarkan sinyal WiFi. Router WiFi di rumah biasanya sudah memiliki fungsi access point." },
+	{ topik = "perangkat", lv = 2, bs = true, q = "Repeater berfungsi untuk memperkuat sinyal agar jangkauan jaringan menjadi lebih jauh.", jawab = true,
+		e = "Benar! Repeater menerima sinyal yang melemah lalu memancarkannya kembali agar lebih kuat." },
+	{ topik = "perangkat", lv = 1, bs = true, q = "Mouse dan keyboard termasuk perangkat jaringan.", jawab = false,
+		e = "Salah! Mouse dan keyboard adalah perangkat input. Contoh perangkat jaringan: router, switch, modem, NIC." },
+	{ topik = "perangkat", lv = 3, q = "Alamat fisik unik yang tertanam pada setiap kartu jaringan (NIC) disebut...",
+		c = { "MAC Address", "IP Address", "URL", "Password" },
+		e = "MAC Address adalah alamat fisik dari pabrik. IP Address adalah alamat logis yang bisa berubah." },
+	{ topik = "perangkat", lv = 3, q = "Di lab komputer, 30 komputer dihubungkan menjadi satu jaringan LAN. Perangkat pusat yang paling tepat adalah...",
+		c = { "Switch", "Modem", "Repeater", "Proyektor" },
+		e = "Switch menjadi pusat jaringan LAN (topologi star) dan mengirim data secara efisien ke komputer tujuan." },
+
+	---------------------------------------------------------------
+	-- INTERNET & CARA KERJANYA
+	---------------------------------------------------------------
+	{ topik = "internet", lv = 1, q = "Internet merupakan singkatan dari...",
+		c = { "Interconnected Network", "International Network", "Interior Networking", "Intelligent Network" },
+		e = "Internet = Interconnected Network, yaitu jaringan-jaringan komputer yang saling terhubung di seluruh dunia." },
+	{ topik = "internet", lv = 1, q = "Aplikasi yang digunakan untuk membuka halaman website disebut...",
+		c = { "Browser", "Antivirus", "Spreadsheet", "Kalkulator" },
+		e = "Browser (contoh: Chrome, Firefox, Edge) adalah aplikasi untuk membuka dan menampilkan halaman web." },
+	{ topik = "internet", lv = 1, q = "Perusahaan yang menyediakan layanan akses internet disebut...",
+		c = { "ISP (Internet Service Provider)", "DNS", "Browser", "Hacker" },
+		e = "ISP adalah penyedia jasa internet. Contohnya penyedia internet rumah dan operator seluler." },
+	{ topik = "internet", lv = 2, q = "Internet berawal dari jaringan bernama...",
+		c = { "ARPANET", "FACEBOOK", "WIFI-NET", "BLUETOOTH" },
+		e = "Internet berawal dari ARPANET (1969), proyek Departemen Pertahanan Amerika Serikat." },
+	{ topik = "internet", lv = 2, q = "Alamat unik setiap perangkat yang terhubung ke jaringan/internet disebut...",
+		c = { "IP Address", "Email", "Username", "Wallpaper" },
+		e = "IP Address adalah alamat unik perangkat, seperti alamat rumah agar data bisa sampai ke tujuan." },
+	{ topik = "internet", lv = 2, q = "Manakah penulisan IP Address (IPv4) yang BENAR?",
+		c = { "192.168.1.10", "192.168.300.1", "192.168.1", "192,168,1,10" },
+		e = "IPv4 terdiri dari 4 angka (masing-masing 0-255) yang dipisah titik. 300 tidak valid karena lebih dari 255." },
+	{ topik = "internet", lv = 2, q = "Sistem yang menerjemahkan nama domain (contoh: www.sekolah.sch.id) menjadi IP Address adalah...",
+		c = { "DNS", "ISP", "HTML", "USB" },
+		e = "DNS (Domain Name System) bekerja seperti buku telepon: mengubah nama domain menjadi IP Address." },
+	{ topik = "internet", lv = 2, bs = true, q = "Website yang alamatnya diawali HTTPS lebih aman karena datanya dienkripsi.", jawab = true,
+		e = "Benar! Huruf S pada HTTPS berarti Secure. Biasanya ditandai ikon gembok di browser." },
+	{ topik = "internet", lv = 2, bs = true, q = "Data di internet dikirim sekaligus dalam satu potongan besar, tidak pernah dipecah.", jawab = false,
+		e = "Salah! Data dipecah menjadi potongan kecil bernama PAKET, lalu disusun kembali di komputer tujuan." },
+	{ topik = "internet", lv = 3, q = "Aturan atau tata cara komunikasi antar komputer di internet disebut...",
+		c = { "Protokol", "Topologi", "Hardware", "Bandwidth" },
+		e = "Protokol adalah aturan komunikasi. Protokol utama internet adalah TCP/IP; untuk web dipakai HTTP/HTTPS." },
+	{ topik = "internet", lv = 3, q = "Domain .sch.id biasanya digunakan oleh website...",
+		c = { "Sekolah", "Pemerintah", "Perusahaan dagang", "Militer" },
+		e = ".sch.id = sekolah, .go.id = pemerintah, .ac.id = perguruan tinggi, .co.id = perusahaan." },
+	{ topik = "internet", lv = 3, q = "Alamat lengkap sebuah halaman web, misalnya https://www.contoh.sch.id/profil, disebut...",
+		c = { "URL", "IP Address", "MAC Address", "SSID" },
+		e = "URL (Uniform Resource Locator) adalah alamat lengkap untuk membuka halaman web tertentu." },
+
+	---------------------------------------------------------------
+	-- KONEKSI KABEL & NIRKABEL
+	---------------------------------------------------------------
+	{ topik = "koneksi", lv = 1, q = "Berikut ini yang termasuk koneksi NIRKABEL (tanpa kabel) adalah...",
+		c = { "WiFi", "Kabel UTP", "Fiber optic", "Kabel koaksial" },
+		e = "Contoh koneksi nirkabel: WiFi, Bluetooth, dan jaringan seluler (4G/5G)." },
+	{ topik = "koneksi", lv = 1, q = "Teknologi nirkabel jarak dekat untuk menghubungkan HP ke speaker atau earphone adalah...",
+		c = { "Bluetooth", "Fiber optic", "Kabel UTP", "Satelit" },
+		e = "Bluetooth adalah koneksi nirkabel jarak dekat, sekitar 10 meter." },
+	{ topik = "koneksi", lv = 1, bs = true, q = "Koneksi kabel biasanya lebih stabil dibandingkan koneksi nirkabel.", jawab = true,
+		e = "Benar! Kabel tidak mudah terganggu jarak dan penghalang, tetapi kurang fleksibel." },
+	{ topik = "koneksi", lv = 2, q = "Kabel jaringan yang mengirimkan data menggunakan CAHAYA adalah...",
+		c = { "Fiber optic (serat optik)", "Kabel UTP", "Kabel koaksial", "Kabel listrik" },
+		e = "Fiber optic memakai cahaya sehingga sangat cepat dan bisa menjangkau jarak jauh, misalnya kabel bawah laut." },
+	{ topik = "koneksi", lv = 2, q = "Nama jaringan WiFi yang muncul saat kita mencari WiFi di HP disebut...",
+		c = { "SSID", "URL", "DNS", "RAM" },
+		e = "SSID (Service Set Identifier) adalah nama jaringan WiFi." },
+	{ topik = "koneksi", lv = 2, q = "Fitur HP yang membagikan koneksi internetnya ke perangkat lain disebut...",
+		c = { "Hotspot / Tethering", "Mode Pesawat", "Screenshot", "Senter" },
+		e = "Dengan hotspot/tethering, HP berfungsi seperti router WiFi kecil untuk perangkat lain." },
+	{ topik = "koneksi", lv = 2, bs = true, q = "Sinyal WiFi bisa melemah jika terhalang tembok tebal atau jaraknya terlalu jauh.", jawab = true,
+		e = "Benar! Gelombang radio WiFi bisa terganggu jarak dan penghalang seperti tembok." },
+	{ topik = "koneksi", lv = 2, q = "Jaringan internet seluler 4G/5G di HP mendapatkan sinyal dari...",
+		c = { "Menara BTS operator", "Kabel UTP", "Printer", "Flashdisk" },
+		e = "HP menerima sinyal internet seluler dari menara BTS (Base Transceiver Station) milik operator." },
+	{ topik = "koneksi", lv = 3, q = "Satuan untuk mengukur kecepatan transfer data internet adalah...",
+		c = { "Mbps (megabit per second)", "Watt", "Kilogram", "Celcius" },
+		e = "Kecepatan internet diukur dalam bps (bit per second). 1 Mbps = 1 juta bit per detik." },
+	{ topik = "koneksi", lv = 3, q = "Berikut ini kekurangan koneksi NIRKABEL dibanding kabel adalah...",
+		c = { "Mudah terganggu jarak dan penghalang", "Tidak bisa berpindah tempat", "Harus memasang kabel panjang", "Tidak bisa dipakai di HP" },
+		e = "Nirkabel fleksibel (bisa berpindah), tetapi sinyalnya bisa terganggu jarak, penghalang, dan lebih rawan disadap." },
+	{ topik = "koneksi", lv = 3, bs = true, q = "Kabel serat optik bawah laut menghubungkan internet antar pulau dan antar negara.", jawab = true,
+		e = "Benar! Sebagian besar lalu lintas internet dunia melewati kabel serat optik bawah laut." },
+
+	---------------------------------------------------------------
+	-- KEAMANAN & PROTEKSI DATA
+	---------------------------------------------------------------
+	{ topik = "keamanan", lv = 1, q = "Manakah password yang paling KUAT?",
+		c = { "B3l@jar!Jaringan7", "12345678", "password", "tanggallahir" },
+		e = "Password kuat: panjang, campuran huruf besar, huruf kecil, angka, dan simbol, serta sulit ditebak." },
+	{ topik = "keamanan", lv = 1, bs = true, q = "Kode OTP boleh diberikan kepada orang yang mengaku petugas bank lewat telepon.", jawab = false,
+		e = "Salah! Kode OTP bersifat RAHASIA. Petugas resmi tidak pernah meminta kode OTP." },
+	{ topik = "keamanan", lv = 1, q = "Penipuan lewat pesan atau link palsu untuk mencuri password disebut...",
+		c = { "Phishing", "Browsing", "Download", "Streaming" },
+		e = "Phishing (dari kata fishing = memancing) memancing korban agar memberikan data pribadinya." },
+	{ topik = "keamanan", lv = 1, q = "Berikut ini yang termasuk DATA PRIBADI yang harus dijaga adalah...",
+		c = { "Nomor NIK dan alamat rumah", "Nama ibu kota negara", "Rumus luas persegi", "Judul lagu kebangsaan" },
+		e = "Data pribadi seperti NIK, alamat, tanggal lahir, dan password tidak boleh disebarkan sembarangan." },
+	{ topik = "keamanan", lv = 2, q = "Proses mengubah data menjadi kode acak agar tidak bisa dibaca orang lain disebut...",
+		c = { "Enkripsi", "Dekripsi", "Download", "Upload" },
+		e = "Enkripsi mengubah data asli menjadi kode acak. Dekripsi mengembalikannya menjadi data asli." },
+	{ topik = "keamanan", lv = 2, q = "Program jahat seperti virus, worm, dan trojan disebut...",
+		c = { "Malware", "Firmware", "Freeware", "Hardware" },
+		e = "Malware (malicious software) adalah perangkat lunak jahat. Lindungi perangkat dengan antivirus." },
+	{ topik = "keamanan", lv = 3, q = "Dengan Caesar Cipher geser 1 huruf (A->B, B->C), kata 'ABC' dienkripsi menjadi...",
+		c = { "BCD", "ZAB", "ABD", "CDE" },
+		e = "Setiap huruf digeser 1: A->B, B->C, C->D. Jadi ABC menjadi BCD." },
+	{ topik = "keamanan", lv = 3, q = "Dengan Caesar Cipher geser 1 huruf, kata 'HAI' dienkripsi menjadi...",
+		c = { "IBJ", "GZH", "HAJ", "JCK" },
+		e = "H->I, A->B, I->J. Jadi HAI menjadi IBJ. Untuk dekripsi, geser kembali 1 huruf ke kiri." },
+	{ topik = "keamanan", lv = 2, q = "Fitur keamanan yang meminta kode tambahan (misal dari SMS) selain password disebut...",
+		c = { "Verifikasi 2 langkah (2FA)", "Mode gelap", "Auto rotate", "Zoom" },
+		e = "Verifikasi 2 langkah membuat akun tetap aman walaupun password diketahui orang lain." },
+	{ topik = "keamanan", lv = 2, bs = true, q = "Menyimpan file di cloud storage memungkinkan file diakses dari perangkat lain melalui internet.", jawab = true,
+		e = "Benar! Cloud storage (contoh: Google Drive) menyimpan data di server internet sehingga bisa diakses di mana saja." },
+	{ topik = "keamanan", lv = 3, q = "Saat memakai WiFi publik di kafe, tindakan yang paling AMAN adalah...",
+		c = { "Tidak login ke akun bank atau akun penting", "Membagikan password ke teman", "Mematikan antivirus", "Mengklik semua link yang muncul" },
+		e = "WiFi publik rawan disadap. Hindari login akun penting atau transaksi keuangan di WiFi publik." },
+	{ topik = "keamanan", lv = 3, bs = true, q = "Menggunakan satu password yang sama untuk semua akun adalah kebiasaan yang aman.", jawab = false,
+		e = "Salah! Jika satu akun bocor, semua akun lain ikut terancam. Gunakan password berbeda di setiap akun." },
+}
+
+local function shuffle(list)
+	for i = #list, 2, -1 do
+		local j = math.random(1, i)
+		list[i], list[j] = list[j], list[i]
+	end
+	return list
+end
+
+-- Mengambil sejumlah soal untuk satu ronde, diurutkan dari mudah ke sulit.
+function Questions.Pick(topicId, count)
+	local pool = {}
+	for _, q in ipairs(Questions.List) do
+		if topicId == "campuran" or q.topik == topicId then
+			table.insert(pool, q)
+		end
+	end
+	shuffle(pool)
+
+	local picked = {}
+	if topicId == "campuran" then
+		-- ambil bergiliran dari tiap topik agar materinya merata
+		local byTopic, order = {}, {}
+		for _, q in ipairs(pool) do
+			if not byTopic[q.topik] then
+				byTopic[q.topik] = {}
+				table.insert(order, q.topik)
+			end
+			table.insert(byTopic[q.topik], q)
+		end
+		local added = true
+		while #picked < count and added do
+			added = false
+			for _, topic in ipairs(order) do
+				local q = table.remove(byTopic[topic])
+				if q and #picked < count then
+					table.insert(picked, q)
+					added = true
+				end
+			end
+		end
+	else
+		for i = 1, math.min(count, #pool) do
+			picked[i] = pool[i]
+		end
+	end
+
+	-- urutkan dari mudah ke sulit (tetap acak di level yang sama)
+	local rank = {}
+	for i, q in ipairs(picked) do
+		rank[q] = (q.lv or 1) * 1000 + i
+	end
+	table.sort(picked, function(a, b)
+		return rank[a] < rank[b]
+	end)
+	return picked
+end
+
+-- Menyiapkan soal untuk ditampilkan: mengacak pilihan & memetakan ke kotak (pad) 1-4.
+-- Hasil: { text, kind = "PG"/"BS", options = { {pad, letter, text, color} }, correctPad, explanation, topic }
+function Questions.Prepare(q, Config)
+	local prepared = {
+		text = q.q,
+		explanation = q.e or "",
+		topic = q.topik,
+		level = q.lv or 1,
+		options = {},
+	}
+	if q.bs then
+		prepared.kind = "BS"
+		prepared.options = {
+			{ pad = 2, letter = "✔", text = "BENAR", color = Config.TrueColor },
+			{ pad = 3, letter = "✖", text = "SALAH", color = Config.FalseColor },
+		}
+		prepared.correctPad = q.jawab and 2 or 3
+	else
+		prepared.kind = "PG"
+		local order = shuffle({ 1, 2, 3, 4 })
+		for pad = 1, 4 do
+			local choiceIndex = order[pad]
+			table.insert(prepared.options, {
+				pad = pad,
+				letter = Config.PadLetters[pad],
+				text = q.c[choiceIndex],
+				color = Config.PadColors[pad],
+			})
+			if choiceIndex == 1 then
+				prepared.correctPad = pad
+			end
+		end
+	end
+	return prepared
+end
+
+function Questions.CountByTopic()
+	local counts = {}
+	for _, q in ipairs(Questions.List) do
+		counts[q.topik] = (counts[q.topik] or 0) + 1
+	end
+	return counts
+end
+
+return Questions
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="5">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="6">
+      <Properties>
+        <string name="Name">QuizServer</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--[[
+	NET QUEST - Server utama
+	Mengatur alur permainan: Lobi -> Hitung mundur -> Soal -> Ungkap jawaban -> Penjelasan -> ... -> Juara
+
+	Cara main:
+	- Soal muncul di layar besar. Pemain berlari dan BERDIRI di kotak jawaban (A/B/C/D atau BENAR/SALAH).
+	- Saat waktu habis, kotak yang salah jatuh ke "Lubang Data". Pemain yang jatuh kembali ke Garis Start
+	  (tidak ada yang tereliminasi, semua tetap ikut belajar sampai akhir).
+	- Poin = jawaban benar + bonus kecepatan + bonus streak. Soal terakhir adalah SOAL BOS (poin x2).
+	- Setelah setiap soal ditampilkan PENJELASAN materi agar siswa tetap belajar.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("QuizShared")
+local Config = require(Shared:WaitForChild("Config"))
+local Questions = require(Shared:WaitForChild("Questions"))
+local MapBuilder = require(script:WaitForChild("MapBuilder"))
+local PlayerData = require(script:WaitForChild("PlayerData"))
+
+local arena = MapBuilder.Build()
+arena:ConnectPit()
+arena:StartDecorations()
+arena:ResetPads(true)
+
+---------------------------------------------------------------------
+-- REMOTES
+---------------------------------------------------------------------
+local remotes = Instance.new("Folder")
+remotes.Name = "QuizRemotes"
+local QuizEvent = Instance.new("RemoteEvent")
+QuizEvent.Name = "QuizEvent"
+QuizEvent.Parent = remotes
+local TeacherEvent = Instance.new("RemoteEvent")
+TeacherEvent.Name = "TeacherCommand"
+TeacherEvent.Parent = remotes
+local ReadyEvent = Instance.new("RemoteEvent")
+ReadyEvent.Name = "ClientReady"
+ReadyEvent.Parent = remotes
+local HintFunction = Instance.new("RemoteFunction")
+HintFunction.Name = "UseHint"
+HintFunction.Parent = remotes
+remotes.Parent = ReplicatedStorage
+
+---------------------------------------------------------------------
+-- STATE
+---------------------------------------------------------------------
+local settings = {
+	topic = "campuran",
+	count = Config.QuestionsPerRound,
+	time = Config.QuestionTime,
+	auto = Config.AutoStart,
+}
+local phase = "Lobby" -- Lobby / Countdown / Question / Reveal / RoundEnd
+local flags = { start = false, lock = false, stop = false }
+local current = nil -- soal yang sedang aktif (hasil Questions.Prepare)
+local snapshot = nil -- pesan fase terakhir, dikirim ke pemain yang baru masuk
+local stats = {} -- [Player] = statistik ronde
+
+local function now()
+	return workspace:GetServerTimeNow()
+end
+
+local function broadcast(payload, keepAsSnapshot)
+	if keepAsSnapshot then
+		snapshot = payload
+	end
+	QuizEvent:FireAllClients(payload)
+end
+
+local function settingsPayload()
+	local topic = Config.GetTopic(settings.topic)
+	return {
+		type = "Settings",
+		topic = settings.topic,
+		topicName = topic.icon .. " " .. topic.name,
+		count = settings.count,
+		time = settings.time,
+		auto = settings.auto,
+	}
+end
+
+local function broadcastSettings()
+	broadcast(settingsPayload())
+end
+
+-- Tunggu beberapa detik, berhenti lebih awal jika guru menekan "Hentikan"
+local function waitFor(seconds)
+	local endsAt = os.clock() + seconds
+	while os.clock() < endsAt do
+		if flags.stop then
+			return false
+		end
+		task.wait(0.1)
+	end
+	return true
+end
+
+---------------------------------------------------------------------
+-- PEMAIN
+---------------------------------------------------------------------
+local function isTeacher(player)
+	if RunService:IsStudio() and Config.StudioEveryoneTeacher then
+		return true
+	end
+	if table.find(Config.TeacherUserIds, player.UserId) then
+		return true
+	end
+	for _, name in ipairs(Config.TeacherNames) do
+		if string.lower(name) == string.lower(player.Name) then
+			return true
+		end
+	end
+	if game.CreatorType == Enum.CreatorType.User and player.UserId == game.CreatorId then
+		return true
+	end
+	if game.CreatorType == Enum.CreatorType.Group then
+		local ok, rank = pcall(function()
+			return player:GetRankInGroup(game.CreatorId)
+		end)
+		if ok and rank >= Config.GroupTeacherMinRank then
+			return true
+		end
+	end
+	return false
+end
+
+local function newStats()
+	return {
+		score = 0,
+		streak = 0,
+		bestStreak = 0,
+		correct = 0,
+		answered = 0,
+		hints = Config.StartingHints,
+		topics = {},
+		choice = nil,
+		choiceTime = nil,
+		hintUsed = false,
+		activeFrom = now(),
+	}
+end
+
+local function updateLeaderstats(player)
+	local st = stats[player]
+	local folder = player:FindFirstChild("leaderstats")
+	if not st or not folder then
+		return
+	end
+	folder.Poin.Value = st.score
+	folder.Benar.Value = st.correct
+	folder.Streak.Value = st.streak
+end
+
+local function sendPersonalStats(player)
+	local st = stats[player]
+	if st then
+		QuizEvent:FireClient(player, { type = "Stats", score = st.score, streak = st.streak, hints = st.hints })
+	end
+end
+
+local function attachTitle(player, character)
+	local head = character:WaitForChild("Head", 10)
+	if not head then
+		return
+	end
+	local old = head:FindFirstChild("GelarTag")
+	if old then
+		old:Destroy()
+	end
+	local rank = PlayerData.GetRank(PlayerData.Get(player).xp)
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "GelarTag"
+	tag.Size = UDim2.fromScale(7, 1.1)
+	tag.StudsOffset = Vector3.new(0, 3.4, 0)
+	tag.MaxDistance = 90
+	tag.LightInfluence = 0
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Font = Enum.Font.FredokaOne
+	text.TextScaled = true
+	text.TextStrokeTransparency = 0.2
+	text.TextColor3 = rank.color
+	text.Text = (player:GetAttribute("IsTeacher") and "🎓 Guru • " or "⭐ ") .. rank.name
+	text.Parent = tag
+	tag.Parent = head
+end
+
+local function teleport(player, cframe)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.AssemblyLinearVelocity = Vector3.zero
+		character:PivotTo(cframe)
+	end
+end
+
+local function onPlayerAdded(player)
+	player:SetAttribute("IsTeacher", isTeacher(player))
+	stats[player] = newStats()
+
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	for _, name in ipairs({ "Poin", "Benar", "Streak" }) do
+		local value = Instance.new("IntValue")
+		value.Name = name
+		value.Parent = leaderstats
+	end
+	leaderstats.Parent = player
+
+	PlayerData.Load(player)
+	player.CharacterAdded:Connect(function(character)
+		attachTitle(player, character)
+	end)
+	if player.Character then
+		task.spawn(attachTitle, player, player.Character)
+	end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(onPlayerAdded, player)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	stats[player] = nil
+	PlayerData.Release(player)
+end)
+
+game:BindToClose(function()
+	PlayerData.SaveAll()
+end)
+
+ReadyEvent.OnServerEvent:Connect(function(player)
+	QuizEvent:FireClient(player, settingsPayload())
+	if snapshot then
+		QuizEvent:FireClient(player, snapshot)
+	end
+	sendPersonalStats(player)
+end)
+
+-- Jaring pengaman: pemain yang terjatuh terlalu jauh dikembalikan
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if root and root.Position.Y < -60 then
+				teleport(player, arena:GetStartCFrame())
+			end
+		end
+	end
+end)
+
+---------------------------------------------------------------------
+-- PERINTAH GURU
+---------------------------------------------------------------------
+TeacherEvent.OnServerEvent:Connect(function(player, command, value)
+	if not player:GetAttribute("IsTeacher") then
+		return
+	end
+	if command == "start" then
+		if phase == "Lobby" then
+			flags.start = true
+		end
+	elseif command == "lock" then
+		if phase == "Question" then
+			flags.lock = true
+		end
+	elseif command == "stop" then
+		if phase ~= "Lobby" then
+			flags.stop = true
+		end
+	elseif command == "topic" then
+		if type(value) == "string" and Config.GetTopic(value).id == value then
+			settings.topic = value
+		end
+	elseif command == "count" then
+		if type(value) == "number" and value >= 3 and value <= 30 then
+			settings.count = math.floor(value)
+		end
+	elseif command == "time" then
+		if type(value) == "number" and value >= 5 and value <= 60 then
+			settings.time = math.floor(value)
+		end
+	elseif command == "auto" then
+		settings.auto = value == true
+	end
+	broadcastSettings()
+end)
+
+---------------------------------------------------------------------
+-- BANTUAN 50:50
+---------------------------------------------------------------------
+HintFunction.OnServerInvoke = function(player)
+	local st = stats[player]
+	if not st or phase ~= "Question" or not current then
+		return nil, "Bantuan hanya bisa dipakai saat soal berlangsung."
+	end
+	if current.kind ~= "PG" then
+		return nil, "Bantuan 50:50 hanya untuk soal pilihan ganda."
+	end
+	if st.hintUsed then
+		return nil, "Bantuan sudah dipakai di soal ini."
+	end
+	if st.hints <= 0 then
+		return nil, "Bantuan habis! Jawab benar 3x berturut-turut untuk dapat lagi."
+	end
+	st.hints -= 1
+	st.hintUsed = true
+	local wrong = {}
+	for _, option in ipairs(current.options) do
+		if option.pad ~= current.correctPad then
+			table.insert(wrong, option.pad)
+		end
+	end
+	table.remove(wrong, math.random(1, #wrong)) -- sisakan satu jawaban salah
+	return wrong, st.hints
+end
+
+---------------------------------------------------------------------
+-- ALUR PERMAINAN
+---------------------------------------------------------------------
+local function idleScreen(info, timer)
+	arena:SetScreen({
+		topic = Config.GameSubtitle,
+		number = "",
+		timer = timer or "",
+		question = Config.GameTitle,
+		info = info,
+		accent = Color3.fromRGB(70, 160, 255),
+	})
+end
+
+local function waitInLobby()
+	phase = "Lobby"
+	current = nil
+	flags.stop, flags.lock = false, false
+	arena:ResetPads(true)
+	while true do
+		if flags.start then
+			break
+		end
+		local enoughPlayers = #Players:GetPlayers() >= Config.MinPlayers
+		if settings.auto and enoughPlayers then
+			local endsAt = now() + Config.IntermissionTime
+			broadcast({ type = "Intermission", endsAt = endsAt }, true)
+			local topicName = Config.GetTopic(settings.topic).name
+			local cancelled = false
+			while now() < endsAt and not flags.start do
+				if not settings.auto or #Players:GetPlayers() < Config.MinPlayers then
+					cancelled = true
+					break
+				end
+				idleScreen("Kuis berikutnya: " .. topicName .. " (" .. settings.count .. " soal). "
+					.. "Sambil menunggu, baca papan di ZONA MATERI!", tostring(math.ceil(endsAt - now())))
+				task.wait(0.25)
+			end
+			if not cancelled then
+				break
+			end
+		else
+			broadcast({ type = "Waiting", reason = enoughPlayers and "teacher" or "players" }, true)
+			idleScreen(enoughPlayers and "Menunggu guru menekan tombol MULAI..." or "Menunggu pemain lain bergabung...")
+			repeat
+				task.wait(0.25)
+			until flags.start or (settings.auto and #Players:GetPlayers() >= Config.MinPlayers)
+		end
+	end
+	flags.start = false
+end
+
+local function scoreQuestion(prepared, startAt, duration, isBoss)
+	local counts = { 0, 0, 0, 0 }
+	for _, player in ipairs(Players:GetPlayers()) do
+		local st = stats[player]
+		if st and st.choice then
+			counts[st.choice] += 1
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		local st = stats[player]
+		if st and st.activeFrom <= startAt then
+			st.answered += 1
+			local topicStat = st.topics[prepared.topic]
+			if not topicStat then
+				topicStat = { correct = 0, total = 0 }
+				st.topics[prepared.topic] = topicStat
+			end
+			topicStat.total += 1
+
+			local isCorrect = st.choice == prepared.correctPad
+			local gained, earnedHint = 0, false
+			if isCorrect then
+				st.correct += 1
+				topicStat.correct += 1
+				st.streak += 1
+				st.bestStreak = math.max(st.bestStreak, st.streak)
+				local speed = math.clamp(1 - ((st.choiceTime or now()) - startAt) / duration, 0, 1)
+				gained = Config.BasePoints
+					+ math.floor(Config.MaxSpeedBonus * speed)
+					+ math.min(Config.StreakBonus * (st.streak - 1), Config.MaxStreakBonus)
+				if isBoss then
+					gained *= Config.BossMultiplier
+				end
+				st.score += gained
+				if st.streak % Config.HintEveryStreak == 0 and st.hints < Config.MaxHints then
+					st.hints += 1
+					earnedHint = true
+				end
+			else
+				st.streak = 0
+			end
+			updateLeaderstats(player)
+			QuizEvent:FireClient(player, {
+				type = "Result",
+				correct = isCorrect,
+				answered = st.choice ~= nil,
+				gained = gained,
+				score = st.score,
+				streak = st.streak,
+				hints = st.hints,
+				earnedHint = earnedHint,
+				isBoss = isBoss,
+			})
+		end
+	end
+	return counts
+end
+
+local function askQuestion(q, index, total)
+	local isBoss = index == total and total >= 5
+	local prepared = Questions.Prepare(q, Config)
+	local topic = Config.GetTopic(prepared.topic)
+	local duration = prepared.kind == "BS" and Config.TrueFalseTime or settings.time
+	if isBoss then
+		duration += 5
+	end
+
+	-- semua pemain kembali ke Garis Start agar adil
+	for _, player in ipairs(Players:GetPlayers()) do
+		teleport(player, arena:GetStartCFrame())
+		local st = stats[player]
+		if st then
+			st.choice, st.choiceTime, st.hintUsed = nil, nil, false
+		end
+	end
+
+	arena:SetQuestion(prepared)
+	current = prepared
+	phase = "Question"
+	flags.lock = false
+	local startAt = now()
+	local endsAt = startAt + duration
+
+	broadcast({
+		type = "Question",
+		index = index,
+		total = total,
+		text = prepared.text,
+		kind = prepared.kind,
+		options = prepared.options,
+		endsAt = endsAt,
+		duration = duration,
+		topicName = topic.icon .. " " .. topic.name,
+		topicColor = topic.color,
+		isBoss = isBoss,
+	}, true)
+
+	arena:SetScreen({
+		topic = topic.icon .. " " .. topic.name,
+		number = isBoss and ("⚠ SOAL BOS ⚠  " .. index .. "/" .. total) or ("SOAL " .. index .. "/" .. total),
+		question = prepared.text,
+		info = prepared.kind == "BS" and "Pernyataan ini BENAR atau SALAH? Berdiri di kotak jawabanmu!"
+			or "Lari dan BERDIRI di kotak jawaban yang benar sebelum waktu habis!",
+		accent = isBoss and Color3.fromRGB(255, 70, 70) or topic.color,
+	})
+
+	-- pantau posisi pemain sampai waktu habis
+	while now() < endsAt and not flags.lock and not flags.stop do
+		local t = now()
+		for _, player in ipairs(Players:GetPlayers()) do
+			local st = stats[player]
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local pad = nil
+			if root and humanoid and humanoid.Health > 0 then
+				pad = arena:GetPadAt(root.Position)
+			end
+			if st and pad ~= st.choice then
+				st.choice, st.choiceTime = pad, t
+			end
+		end
+		arena:SetScreen({ timer = tostring(math.max(0, math.ceil(endsAt - t))) })
+		task.wait(0.1)
+	end
+	if flags.stop then
+		return false
+	end
+
+	-- UNGKAP JAWABAN
+	phase = "Reveal"
+	arena:SetScreen({ timer = "0" })
+	local counts = scoreQuestion(prepared, startAt, duration, isBoss)
+	local correctOption
+	for _, option in ipairs(prepared.options) do
+		if option.pad == prepared.correctPad then
+			correctOption = option
+		end
+	end
+	broadcast({
+		type = "Reveal",
+		correctPad = prepared.correctPad,
+		correctLetter = correctOption.letter,
+		correctText = correctOption.text,
+		explanation = prepared.explanation,
+		counts = counts,
+		explainEndsAt = now() + Config.RevealTime + Config.ExplanationTime,
+	}, true)
+	arena:Reveal(prepared.correctPad, counts)
+	arena:SetScreen({
+		info = "✔ Jawaban: " .. (prepared.kind == "PG" and (correctOption.letter .. ". ") or "") .. correctOption.text
+			.. "\n📘 " .. prepared.explanation,
+	})
+	current = nil
+
+	if not waitFor(Config.RevealTime + Config.ExplanationTime) then
+		return false
+	end
+	arena:ResetPads(false)
+	return true
+end
+
+local function topicLabel(topicId)
+	local topic = Config.GetTopic(topicId)
+	return topic.icon .. " " .. topic.name
+end
+
+local function finishRound(totalQuestions)
+	phase = "RoundEnd"
+	local ranking = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local st = stats[player]
+		if st and st.answered > 0 then
+			table.insert(ranking, { player = player, st = st })
+		end
+	end
+	table.sort(ranking, function(a, b)
+		if a.st.score ~= b.st.score then
+			return a.st.score > b.st.score
+		end
+		return a.st.correct > b.st.correct
+	end)
+
+	local publicRanking = {}
+	for i, entry in ipairs(ranking) do
+		table.insert(publicRanking, {
+			name = entry.player.DisplayName,
+			userId = entry.player.UserId,
+			score = entry.st.score,
+			correct = entry.st.correct,
+			total = entry.st.answered,
+		})
+		if i >= 10 then
+			break
+		end
+	end
+	broadcast({ type = "RoundEnd", ranking = publicRanking, totalQuestions = totalQuestions }, true)
+	arena:SetHallOfFame(publicRanking)
+
+	-- ringkasan pribadi + rekomendasi belajar
+	for position, entry in ipairs(ranking) do
+		local player, st = entry.player, entry.st
+		local weak, strong
+		for topicId, topicStat in pairs(st.topics) do
+			local ratio = topicStat.correct / topicStat.total
+			if not weak or ratio < weak.ratio then
+				weak = { id = topicId, ratio = ratio, correct = topicStat.correct, total = topicStat.total }
+			end
+			if not strong or ratio > strong.ratio then
+				strong = { id = topicId, ratio = ratio, correct = topicStat.correct, total = topicStat.total }
+			end
+		end
+		local data, rankUp = PlayerData.AddRoundResult(player, st.score, st.correct, st.answered, position == 1)
+		local rank, nextRank = PlayerData.GetRank(data.xp)
+		QuizEvent:FireClient(player, {
+			type = "Summary",
+			position = position,
+			players = #ranking,
+			score = st.score,
+			correct = st.correct,
+			answered = st.answered,
+			bestStreak = st.bestStreak,
+			weakTopic = weak and weak.ratio < 1 and topicLabel(weak.id) or nil,
+			weakId = weak and weak.ratio < 1 and weak.id or nil,
+			weakText = weak and (weak.correct .. "/" .. weak.total) or nil,
+			strongTopic = strong and strong.ratio > 0 and topicLabel(strong.id) or nil,
+			strongText = strong and (strong.correct .. "/" .. strong.total) or nil,
+			xp = data.xp,
+			title = rank.name,
+			titleColor = rank.color,
+			nextTitle = nextRank and nextRank.name or nil,
+			nextXp = nextRank and nextRank.xp or nil,
+			rankUp = rankUp,
+		})
+		if player.Character then
+			task.spawn(attachTitle, player, player.Character)
+		end
+	end
+
+	-- semua ke lobi, 3 besar naik podium
+	for _, player in ipairs(Players:GetPlayers()) do
+		teleport(player, arena:GetLobbyCFrame() * CFrame.Angles(0, math.pi, 0))
+	end
+	for rank = 1, math.min(3, #ranking) do
+		teleport(ranking[rank].player, arena:GetPodiumCFrame(rank))
+	end
+	arena:CelebratePodium()
+	idleScreen(#ranking > 0 and ("🏆 Juara ronde ini: " .. ranking[1].player.DisplayName .. " dengan " .. ranking[1].st.score .. " poin! 🏆")
+		or "Ronde selesai!")
+
+	waitFor(Config.RoundEndTime)
+end
+
+local function runRound()
+	local list = Questions.Pick(settings.topic, settings.count)
+	if #list == 0 then
+		warn("[NetQuest] Tidak ada soal untuk topik " .. settings.topic)
+		return
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		stats[player] = newStats()
+		stats[player].activeFrom = 0
+		updateLeaderstats(player)
+		sendPersonalStats(player)
+	end
+
+	-- hitung mundur 3..2..1
+	phase = "Countdown"
+	local topic = Config.GetTopic(settings.topic)
+	for _, player in ipairs(Players:GetPlayers()) do
+		teleport(player, arena:GetStartCFrame())
+	end
+	broadcast({ type = "Countdown", endsAt = now() + 4, topicName = topic.icon .. " " .. topic.name, total = #list }, true)
+	idleScreen("Bersiap! Topik: " .. topic.name .. " • " .. #list .. " soal", "")
+	if waitFor(4) then
+		for index, q in ipairs(list) do
+			if not askQuestion(q, index, #list) then
+				break
+			end
+		end
+	end
+
+	if flags.stop then
+		broadcast({ type = "Stopped" })
+		for _, player in ipairs(Players:GetPlayers()) do
+			teleport(player, arena:GetLobbyCFrame())
+		end
+		return
+	end
+	finishRound(#list)
+end
+
+-- LOOP UTAMA
+task.wait(2)
+while true do
+	waitInLobby()
+	broadcastSettings()
+	runRound()
+	arena:ResetPads(true)
+end
+]]></string>
+      </Properties>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">MapBuilder</string>
+          <string name="Source"><![CDATA[--[[
+	MapBuilder: membangun arena kuis secara otomatis.
+
+	Arena disimpan di Workspace > ArenaKuis. Jika folder itu sudah ada (misalnya
+	Anda membangunnya di mode edit lalu menghias sendiri), arena lama dipakai apa adanya.
+	Untuk membangun arena di mode edit agar bisa dihias, jalankan di Command Bar:
+	    require(game.ServerScriptService.QuizServer.MapBuilder).Build()
+
+	Tata letak (dilihat dari atas, sumbu Z):
+	    z = -16      Layar besar (pertanyaan)
+	    z = -11..11  4 kotak jawaban A B C D (di bawahnya "Lubang Data")
+	    z =  11..35  Garis Start (tempat pemain menunggu soal)
+	    z =  35..99  Lobi + Zona Materi + Podium Juara
+]]
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("QuizShared")
+local Config = require(Shared:WaitForChild("Config"))
+local Materi = require(Shared:WaitForChild("Materi"))
+
+local MapBuilder = {}
+
+local ARENA_NAME = "ArenaKuis"
+local PAD_X = { -33, -11, 11, 33 }
+local PAD_SIZE = Vector3.new(22, 2, 22)
+local IDLE_PAD_COLOR = Color3.fromRGB(70, 75, 95)
+local DARK = Color3.fromRGB(18, 20, 34)
+local WHITE = Color3.new(1, 1, 1)
+
+---------------------------------------------------------------------
+-- Helper pembuat Instance
+---------------------------------------------------------------------
+local function make(className, props, parent)
+	local inst = Instance.new(className)
+	for key, value in pairs(props) do
+		inst[key] = value
+	end
+	inst.Parent = parent
+	return inst
+end
+
+local function part(props, parent)
+	props.Anchored = true
+	props.TopSurface = Enum.SurfaceType.Smooth
+	props.BottomSurface = Enum.SurfaceType.Smooth
+	if props.Material == nil then
+		props.Material = Enum.Material.SmoothPlastic
+	end
+	return make("Part", props, parent)
+end
+
+local function surfaceGui(target, face, pixelsPerStud)
+	return make("SurfaceGui", {
+		Name = "Gui",
+		Face = face,
+		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		PixelsPerStud = pixelsPerStud,
+		LightInfluence = 0,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	}, target)
+end
+
+local function label(parent, props)
+	local defaults = {
+		BackgroundTransparency = 1,
+		TextColor3 = WHITE,
+		Font = Enum.Font.GothamBold,
+		TextScaled = true,
+		TextWrapped = true,
+		Text = "",
+	}
+	for key, value in pairs(props) do
+		defaults[key] = value
+	end
+	local maxSize = defaults.MaxTextSize
+	defaults.MaxTextSize = nil
+	local inst = make("TextLabel", defaults, parent)
+	if maxSize then
+		make("UITextSizeConstraint", { MaxTextSize = maxSize }, inst)
+	end
+	return inst
+end
+
+local function confettiEmitter(parent)
+	return make("ParticleEmitter", {
+		Name = "Konfeti",
+		Enabled = false,
+		EmissionDirection = Enum.NormalId.Top,
+		Rate = 0,
+		Lifetime = NumberRange.new(2, 3.5),
+		Speed = NumberRange.new(30, 50),
+		SpreadAngle = Vector2.new(45, 45),
+		Acceleration = Vector3.new(0, -35, 0),
+		Drag = 1.5,
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-300, 300),
+		Size = NumberSequence.new(0.6),
+		LightEmission = 0.3,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+			ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 220, 60)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 230, 120)),
+			ColorSequenceKeypoint.new(0.75, Color3.fromRGB(70, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(230, 90, 255)),
+		}),
+	}, parent)
+end
+
+---------------------------------------------------------------------
+-- MEMBANGUN ARENA BARU
+---------------------------------------------------------------------
+local function buildArena()
+	local arena = make("Folder", { Name = ARENA_NAME }, nil)
+
+	-- LANTAI ----------------------------------------------------------
+	local floors = make("Folder", { Name = "Lantai" }, arena)
+	part({ Name = "GarisStart", Size = Vector3.new(100, 2, 24), Position = Vector3.new(0, -1, 23),
+		Color = Color3.fromRGB(34, 40, 72) }, floors)
+	part({ Name = "Lobi", Size = Vector3.new(100, 2, 64), Position = Vector3.new(0, -1, 67),
+		Color = Color3.fromRGB(26, 30, 52) }, floors)
+	for _, side in ipairs({ -1, 1 }) do
+		part({ Name = "SampingKotak", Size = Vector3.new(6, 2, 23), Position = Vector3.new(47 * side, -1, -0.5),
+			Color = DARK }, floors)
+	end
+	-- garis neon pembatas start
+	part({ Name = "GarisNeon", Size = Vector3.new(88, 0.2, 0.6), Position = Vector3.new(0, 0.05, 11.3),
+		Color = WHITE, Material = Enum.Material.Neon, CanCollide = false }, floors)
+	local startLabel = part({ Name = "TulisanStart", Size = Vector3.new(40, 0.1, 5), Position = Vector3.new(0, 0.02, 15),
+		Transparency = 1, CanCollide = false }, floors)
+	label(surfaceGui(startLabel, Enum.NormalId.Top, 20), {
+		Size = UDim2.fromScale(1, 1), Text = "▲ LARI KE KOTAK JAWABAN ▲",
+		TextColor3 = Color3.fromRGB(150, 220, 255), TextTransparency = 0.2,
+	})
+	-- garis grid neon di lantai lobi
+	for i = -2, 2 do
+		part({ Name = "Grid", Size = Vector3.new(0.3, 0.1, 64), Position = Vector3.new(i * 20, 0.02, 67),
+			Color = Color3.fromRGB(60, 120, 255), Material = Enum.Material.Neon, CanCollide = false, Transparency = 0.4 }, floors)
+	end
+	for i = 0, 3 do
+		part({ Name = "Grid", Size = Vector3.new(100, 0.1, 0.3), Position = Vector3.new(0, 0.02, 40 + i * 18),
+			Color = Color3.fromRGB(60, 120, 255), Material = Enum.Material.Neon, CanCollide = false, Transparency = 0.4 }, floors)
+	end
+
+	-- KOTAK JAWABAN ---------------------------------------------------
+	local pads = make("Folder", { Name = "KotakJawaban" }, arena)
+	for i = 1, 4 do
+		local pad = part({ Name = "Pad" .. i, Size = PAD_SIZE, Position = Vector3.new(PAD_X[i], -1, 0),
+			Color = Config.PadColors[i] }, pads)
+		confettiEmitter(pad)
+		make("PointLight", { Name = "Cahaya", Range = 18, Brightness = 0, Color = WHITE }, pad)
+
+		-- huruf besar melayang di atas kotak
+		local billboard = make("BillboardGui", { Name = "Huruf", Size = UDim2.fromScale(8, 8),
+			StudsOffset = Vector3.new(0, 11, 0), LightInfluence = 0, MaxDistance = 250 }, pad)
+		label(billboard, { Name = "Teks", Size = UDim2.fromScale(1, 1), Text = Config.PadLetters[i],
+			TextStrokeTransparency = 0, TextStrokeColor3 = DARK })
+
+		-- papan jawaban di ujung belakang kotak
+		local sign = part({ Name = "Papan" .. i, Size = Vector3.new(21, 7, 0.6), Position = Vector3.new(PAD_X[i], 4.6, -11.6),
+			Color = DARK, CanCollide = false }, pads)
+		local gui = surfaceGui(sign, Enum.NormalId.Back, 40)
+		local bg = make("Frame", { Name = "Latar", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Config.PadColors[i],
+			BorderSizePixel = 0 }, gui)
+		make("UIStroke", { Thickness = 8, Color = WHITE, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, bg)
+		label(bg, { Name = "Huruf", Size = UDim2.fromScale(0.2, 0.9), Position = UDim2.fromScale(0.02, 0.05),
+			Text = Config.PadLetters[i], Font = Enum.Font.FredokaOne })
+		label(bg, { Name = "Jawaban", Size = UDim2.fromScale(0.74, 0.7), Position = UDim2.fromScale(0.23, 0.08),
+			Text = "", MaxTextSize = 70 })
+		label(bg, { Name = "Jumlah", Size = UDim2.fromScale(0.74, 0.2), Position = UDim2.fromScale(0.23, 0.78),
+			Text = "", TextXAlignment = Enum.TextXAlignment.Right, Font = Enum.Font.Gotham })
+	end
+	-- garis pembatas antar kotak (tidak bisa diinjak, hanya hiasan)
+	for i = 1, 3 do
+		part({ Name = "Pembatas", Size = Vector3.new(0.5, 0.25, 22), Position = Vector3.new((PAD_X[i] + PAD_X[i + 1]) / 2, 0.1, 0),
+			Color = WHITE, Material = Enum.Material.Neon, CanCollide = false }, pads)
+	end
+
+	-- LUBANG DATA (tempat jatuh jika salah) ---------------------------
+	local pit = part({ Name = "LubangData", Size = Vector3.new(130, 2, 60), Position = Vector3.new(0, -46, -6),
+		Color = Color3.fromRGB(0, 170, 255), Material = Enum.Material.Neon, Transparency = 0.25 }, arena)
+	label(surfaceGui(pit, Enum.NormalId.Top, 6), { Size = UDim2.fromScale(1, 1),
+		Text = "01001 UPS! KAMU JATUH KE LUBANG DATA 10110", TextTransparency = 0.3, TextColor3 = DARK })
+
+	-- LAYAR BESAR -----------------------------------------------------
+	local screen = part({ Name = "Layar", Size = Vector3.new(92, 34, 1), Position = Vector3.new(0, 29, -16),
+		Color = Color3.fromRGB(10, 12, 24) }, arena)
+	local sgui = surfaceGui(screen, Enum.NormalId.Back, 20)
+	local frame = make("Frame", { Name = "Isi", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(14, 18, 38),
+		BorderSizePixel = 0 }, sgui)
+	make("UIStroke", { Thickness = 14, Color = Color3.fromRGB(70, 160, 255), ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, frame)
+	local header = make("Frame", { Name = "Header", Size = UDim2.fromScale(1, 0.15), BackgroundColor3 = Color3.fromRGB(70, 160, 255),
+		BorderSizePixel = 0 }, frame)
+	label(header, { Name = "Topik", Size = UDim2.fromScale(0.55, 0.8), Position = UDim2.fromScale(0.02, 0.1),
+		TextXAlignment = Enum.TextXAlignment.Left, Text = Config.GameSubtitle })
+	label(header, { Name = "Nomor", Size = UDim2.fromScale(0.25, 0.8), Position = UDim2.fromScale(0.58, 0.1), Text = "" })
+	label(header, { Name = "Waktu", Size = UDim2.fromScale(0.14, 0.9), Position = UDim2.fromScale(0.85, 0.05), Text = "",
+		Font = Enum.Font.FredokaOne })
+	label(frame, { Name = "Pertanyaan", Size = UDim2.fromScale(0.94, 0.55), Position = UDim2.fromScale(0.03, 0.18),
+		Text = Config.GameTitle, Font = Enum.Font.FredokaOne, MaxTextSize = 110 })
+	label(frame, { Name = "Info", Size = UDim2.fromScale(0.94, 0.22), Position = UDim2.fromScale(0.03, 0.75),
+		Text = "Selamat datang! Baca Zona Materi di lobi sambil menunggu kuis dimulai.", Font = Enum.Font.Gotham,
+		TextColor3 = Color3.fromRGB(190, 220, 255), MaxTextSize = 48 })
+
+	local titleBar = part({ Name = "JudulGame", Size = Vector3.new(60, 6, 1), Position = Vector3.new(0, 50, -16),
+		Color = Color3.fromRGB(255, 80, 200), Material = Enum.Material.Neon }, arena)
+	label(surfaceGui(titleBar, Enum.NormalId.Back, 20), { Size = UDim2.fromScale(1, 1),
+		Text = "🌐 " .. Config.GameTitle .. " 🌐", Font = Enum.Font.FredokaOne, TextColor3 = WHITE,
+		TextStrokeTransparency = 0.3 })
+	for _, side in ipairs({ -1, 1 }) do
+		part({ Name = "TiangLayar", Size = Vector3.new(3, 100, 3), Position = Vector3.new(47.5 * side, 4, -16),
+			Color = Color3.fromRGB(40, 45, 70), Material = Enum.Material.Metal }, arena)
+		part({ Name = "LampuTiang", Size = Vector3.new(3.2, 60, 0.6), Position = Vector3.new(47.5 * side, 20, -14.4),
+			Color = Color3.fromRGB(70, 160, 255), Material = Enum.Material.Neon, CanCollide = false }, arena)
+	end
+
+	-- DINDING ---------------------------------------------------------
+	local walls = make("Folder", { Name = "Dinding" }, arena)
+	local function invisibleWall(name, size, pos)
+		part({ Name = name, Size = size, Position = pos, Transparency = 1 }, walls)
+	end
+	invisibleWall("BatasDepan", Vector3.new(100, 60, 1), Vector3.new(0, 20, -12.5))
+	invisibleWall("BatasBelakang", Vector3.new(100, 60, 1), Vector3.new(0, 20, 99.5))
+	invisibleWall("BatasKiri", Vector3.new(1, 60, 113), Vector3.new(-50.5, 20, 43.5))
+	invisibleWall("BatasKanan", Vector3.new(1, 60, 113), Vector3.new(50.5, 20, 43.5))
+	for _, side in ipairs({ -1, 1 }) do
+		part({ Name = "DindingLobi", Size = Vector3.new(1, 18, 64), Position = Vector3.new(50.5 * side, 9, 67),
+			Color = Color3.fromRGB(30, 36, 66) }, walls)
+		part({ Name = "LisNeon", Size = Vector3.new(0.4, 0.4, 64), Position = Vector3.new(49.9 * side, 17.5, 67),
+			Color = Color3.fromRGB(255, 80, 200), Material = Enum.Material.Neon, CanCollide = false }, walls)
+	end
+	part({ Name = "DindingBelakang", Size = Vector3.new(102, 18, 1), Position = Vector3.new(0, 9, 100.5),
+		Color = Color3.fromRGB(30, 36, 66) }, walls)
+
+	-- ZONA MATERI (papan materi di dinding kiri & kanan lobi) ---------
+	local boards = make("Folder", { Name = "ZonaMateri" }, arena)
+	local boardTopics = {}
+	for _, topic in ipairs(Config.Topics) do
+		if topic.id ~= "campuran" then
+			table.insert(boardTopics, topic)
+		end
+	end
+	for index, topic in ipairs(boardTopics) do
+		local side = index <= 3 and -1 or 1
+		local z = 46 + ((index - 1) % 3) * 20
+		local board = part({ Name = "Materi_" .. topic.id, Size = Vector3.new(0.4, 12, 18),
+			Position = Vector3.new(49.6 * side, 7.5, z), Color = DARK }, boards)
+		board:SetAttribute("TopicId", topic.id)
+		local face = side < 0 and Enum.NormalId.Right or Enum.NormalId.Left
+		local gui = surfaceGui(board, face, 60)
+		local bg = make("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(16, 20, 40),
+			BorderSizePixel = 0 }, gui)
+		make("UIStroke", { Thickness = 10, Color = topic.color, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, bg)
+		local titleFrame = make("Frame", { Size = UDim2.fromScale(1, 0.15), BackgroundColor3 = topic.color,
+			BorderSizePixel = 0 }, bg)
+		label(titleFrame, { Size = UDim2.fromScale(0.96, 0.85), Position = UDim2.fromScale(0.02, 0.08),
+			Text = topic.icon .. "  " .. string.upper(topic.name), Font = Enum.Font.FredokaOne, TextColor3 = DARK })
+		local body = make("Frame", { Size = UDim2.fromScale(0.94, 0.8), Position = UDim2.fromScale(0.03, 0.18),
+			BackgroundTransparency = 1 }, bg)
+		make("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, body)
+		for order, point in ipairs(Materi[topic.id] or {}) do
+			label(body, { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextScaled = false,
+				TextSize = 26, Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left,
+				LayoutOrder = order, Text = "• " .. point, TextColor3 = Color3.fromRGB(225, 235, 255) })
+		end
+		make("ProximityPrompt", { Name = "BacaMateri", ActionText = "Baca Materi", ObjectText = topic.name,
+			HoldDuration = 0, MaxActivationDistance = 14, RequiresLineOfSight = false, KeyboardKeyCode = Enum.KeyCode.E }, board)
+		-- lampu sorot papan
+		part({ Name = "LampuPapan", Size = Vector3.new(1.2, 0.4, 18), Position = Vector3.new(49.2 * side, 14, z),
+			Color = topic.color, Material = Enum.Material.Neon, CanCollide = false }, boards)
+	end
+	local zoneSign = part({ Name = "TulisanZonaMateri", Size = Vector3.new(30, 0.1, 6), Position = Vector3.new(0, 0.03, 42),
+		Transparency = 1, CanCollide = false }, boards)
+	label(surfaceGui(zoneSign, Enum.NormalId.Top, 20), { Size = UDim2.fromScale(1, 1), Rotation = 180,
+		Text = "📚 ZONA MATERI: baca papan di dinding! 📚", TextColor3 = Color3.fromRGB(255, 220, 90), TextTransparency = 0.15 })
+
+	-- PODIUM & PAPAN JUARA --------------------------------------------
+	local podium = make("Folder", { Name = "Podium" }, arena)
+	local podiumData = {
+		{ x = 0, h = 5, color = Color3.fromRGB(255, 205, 50), text = "1" },
+		{ x = -8, h = 3.5, color = Color3.fromRGB(200, 205, 220), text = "2" },
+		{ x = 8, h = 2.5, color = Color3.fromRGB(215, 135, 70), text = "3" },
+	}
+	for rank, data in ipairs(podiumData) do
+		local block = part({ Name = "Juara" .. rank, Size = Vector3.new(7, data.h, 7), Position = Vector3.new(data.x, data.h / 2, 90),
+			Color = data.color, Material = Enum.Material.Metal }, podium)
+		confettiEmitter(block)
+		label(surfaceGui(block, Enum.NormalId.Front, 30), { Size = UDim2.fromScale(1, 1), Text = data.text,
+			Font = Enum.Font.FredokaOne, TextColor3 = DARK })
+	end
+	local fame = part({ Name = "PapanJuara", Size = Vector3.new(34, 13, 0.4), Position = Vector3.new(0, 10, 99.6),
+		Color = DARK }, podium)
+	local fameGui = surfaceGui(fame, Enum.NormalId.Front, 30)
+	local fameBg = make("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(20, 16, 40),
+		BorderSizePixel = 0 }, fameGui)
+	make("UIStroke", { Thickness = 8, Color = Color3.fromRGB(255, 205, 50), ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, fameBg)
+	label(fameBg, { Name = "Judul", Size = UDim2.fromScale(0.96, 0.18), Position = UDim2.fromScale(0.02, 0.03),
+		Text = "🏆 JUARA RONDE TERAKHIR 🏆", Font = Enum.Font.FredokaOne, TextColor3 = Color3.fromRGB(255, 205, 50) })
+	label(fameBg, { Name = "Daftar", Size = UDim2.fromScale(0.9, 0.74), Position = UDim2.fromScale(0.05, 0.23),
+		Text = "Belum ada juara. Ayo jadi yang pertama!", Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top, MaxTextSize = 34 })
+
+	-- SPAWN -----------------------------------------------------------
+	make("SpawnLocation", { Name = "SpawnLobi", Anchored = true, Size = Vector3.new(12, 1, 12), Position = Vector3.new(0, 0.5, 60),
+		Color = Color3.fromRGB(70, 160, 255), Material = Enum.Material.Neon, Transparency = 0.3, Neutral = true, Duration = 0,
+		TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, arena)
+
+	-- DEKORASI: rak server, globe internet, kabel & paket data ---------
+	local deco = make("Folder", { Name = "Dekorasi" }, arena)
+	local rackSpots = { Vector3.new(-44, 0, 96), Vector3.new(44, 0, 96), Vector3.new(-44, 0, 38), Vector3.new(44, 0, 38) }
+	for _, spot in ipairs(rackSpots) do
+		part({ Name = "RakServer", Size = Vector3.new(5, 12, 4), Position = spot + Vector3.new(0, 6, 0),
+			Color = Color3.fromRGB(22, 24, 30), Material = Enum.Material.Metal }, deco)
+		for row = 1, 5 do
+			part({ Name = "LampuRak", Size = Vector3.new(4, 0.3, 0.2),
+				Position = spot + Vector3.new(0, row * 2, spot.Z > 60 and -2.05 or 2.05),
+				Color = (row % 2 == 0) and Color3.fromRGB(80, 255, 140) or Color3.fromRGB(70, 160, 255),
+				Material = Enum.Material.Neon, CanCollide = false }, deco)
+		end
+	end
+	local pedestal = part({ Name = "Pedestal", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 10, 10),
+		CFrame = CFrame.new(0, 1, 74) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(40, 45, 70),
+		Material = Enum.Material.Metal }, deco)
+	pedestal:SetAttribute("Hiasan", true)
+	local globe = part({ Name = "GlobeInternet", Shape = Enum.PartType.Ball, Size = Vector3.new(8, 8, 8),
+		Position = Vector3.new(0, 8, 74), Color = Color3.fromRGB(60, 200, 255), Material = Enum.Material.ForceField,
+		CanCollide = false }, deco)
+	make("PointLight", { Range = 24, Brightness = 2, Color = Color3.fromRGB(60, 200, 255) }, globe)
+	local globeTag = make("BillboardGui", { Size = UDim2.fromScale(10, 2), StudsOffset = Vector3.new(0, 6, 0), LightInfluence = 0 }, globe)
+	label(globeTag, { Size = UDim2.fromScale(1, 1), Text = "INTERNET", Font = Enum.Font.FredokaOne,
+		TextColor3 = Color3.fromRGB(150, 230, 255), TextStrokeTransparency = 0.2 })
+	-- kabel neon dari rak server menuju globe
+	for _, spot in ipairs(rackSpots) do
+		local from = Vector3.new(spot.X, 0.1, spot.Z)
+		local to = Vector3.new(0, 0.1, 74)
+		local length = (to - from).Magnitude
+		local cable = part({ Name = "Kabel", Size = Vector3.new(0.4, 0.15, length),
+			CFrame = CFrame.lookAt((from + to) / 2, to), Color = Color3.fromRGB(255, 80, 200),
+			Material = Enum.Material.Neon, CanCollide = false }, deco)
+		cable:SetAttribute("Dari", from)
+		cable:SetAttribute("Ke", to)
+	end
+
+	-- PENCAHAYAAN -----------------------------------------------------
+	local lamps = make("Folder", { Name = "Lampu" }, arena)
+	for _, pos in ipairs({ Vector3.new(-30, 16, 23), Vector3.new(30, 16, 23), Vector3.new(0, 16, 55), Vector3.new(0, 16, 85) }) do
+		local lamp = part({ Name = "Lampu", Size = Vector3.new(1, 1, 1), Position = pos, Transparency = 1, CanCollide = false }, lamps)
+		make("PointLight", { Range = 40, Brightness = 1.2, Color = Color3.fromRGB(200, 220, 255) }, lamp)
+	end
+
+	arena.Parent = workspace
+	return arena
+end
+
+---------------------------------------------------------------------
+-- Pengaturan dunia (langit, cahaya, hapus baseplate bawaan)
+---------------------------------------------------------------------
+local function setupWorld(arena)
+	Lighting.ClockTime = Config.ClockTime
+	Lighting.Brightness = 2
+	Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 150)
+	Lighting.Ambient = Color3.fromRGB(60, 60, 80)
+	if not Lighting:FindFirstChild("BloomKuis") then
+		make("BloomEffect", { Name = "BloomKuis", Intensity = 0.6, Size = 30, Threshold = 1.4 }, Lighting)
+	end
+	if not Lighting:FindFirstChildOfClass("Atmosphere") then
+		make("Atmosphere", { Density = 0.25, Offset = 0.1, Color = Color3.fromRGB(200, 170, 255),
+			Decay = Color3.fromRGB(90, 70, 140), Glare = 0.2, Haze = 1 }, Lighting)
+	end
+	-- Baseplate & SpawnLocation bawaan template Roblox menghalangi Lubang Data, jadi dihapus.
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child ~= arena and (child.Name == "Baseplate" or child:IsA("SpawnLocation") or child.Name == "PetunjukAwal") then
+			child:Destroy()
+		end
+	end
+end
+
+---------------------------------------------------------------------
+-- Objek Arena: dipakai server untuk mengontrol tampilan
+---------------------------------------------------------------------
+local Arena = {}
+Arena.__index = Arena
+
+local function requireChild(parent, path)
+	local current = parent
+	for _, name in ipairs(string.split(path, "/")) do
+		current = current and current:FindFirstChild(name)
+	end
+	return current
+end
+
+local REQUIRED = {
+	"KotakJawaban/Pad1", "KotakJawaban/Pad2", "KotakJawaban/Pad3", "KotakJawaban/Pad4",
+	"KotakJawaban/Papan1", "KotakJawaban/Papan2", "KotakJawaban/Papan3", "KotakJawaban/Papan4",
+	"LubangData", "Layar/Gui/Isi", "Podium/PapanJuara/Gui",
+	"Podium/Juara1", "Podium/Juara2", "Podium/Juara3",
+}
+
+local function isValid(arena)
+	for _, path in ipairs(REQUIRED) do
+		if not requireChild(arena, path) then
+			warn("[NetQuest] ArenaKuis tidak lengkap (" .. path .. " hilang), arena dibangun ulang.")
+			return false
+		end
+	end
+	return true
+end
+
+function Arena.new(folder)
+	local self = setmetatable({}, Arena)
+	self.Folder = folder
+	self.Pads, self.Signs = {}, {}
+	for i = 1, 4 do
+		self.Pads[i] = requireChild(folder, "KotakJawaban/Pad" .. i)
+		self.Signs[i] = requireChild(folder, "KotakJawaban/Papan" .. i .. "/Gui/Latar")
+	end
+	self.Pit = folder.LubangData
+	local screen = requireChild(folder, "Layar/Gui/Isi")
+	self.Screen = {
+		Frame = screen,
+		Topic = requireChild(screen, "Header/Topik"),
+		Number = requireChild(screen, "Header/Nomor"),
+		Timer = requireChild(screen, "Header/Waktu"),
+		Header = screen:FindFirstChild("Header"),
+		Question = screen:FindFirstChild("Pertanyaan"),
+		Info = screen:FindFirstChild("Info"),
+	}
+	self.FameList = requireChild(folder, "Podium/PapanJuara/Gui")
+	self.FameList = self.FameList and self.FameList:FindFirstChild("Daftar", true)
+	self.Podiums = {}
+	for i = 1, 3 do
+		self.Podiums[i] = requireChild(folder, "Podium/Juara" .. i)
+	end
+	self.ActivePads = {}
+	self.PadColors = {}
+	return self
+end
+
+-- Posisi acak di Garis Start (menghadap layar)
+function Arena:GetStartCFrame()
+	return CFrame.new(math.random(-40, 40), 3.5, math.random(15, 31))
+end
+
+function Arena:GetLobbyCFrame()
+	return CFrame.new(math.random(-12, 12), 3.5, math.random(52, 66))
+end
+
+function Arena:GetPodiumCFrame(rank)
+	local block = self.Podiums[rank]
+	-- CFrame.new tanpa rotasi = menghadap -Z (ke arah lobi & layar)
+	return CFrame.new(block.Position + Vector3.new(0, block.Size.Y / 2 + 3, 0))
+end
+
+-- Mengembalikan nomor kotak (1-4) tempat posisi berada, atau nil
+function Arena:GetPadAt(position)
+	for i, pad in ipairs(self.Pads) do
+		if self.ActivePads[i] then
+			local rel = pad.CFrame:PointToObjectSpace(position)
+			local half = pad.Size / 2
+			if math.abs(rel.X) <= half.X and math.abs(rel.Z) <= half.Z and rel.Y > -half.Y and rel.Y < 10 then
+				return i
+			end
+		end
+	end
+	return nil
+end
+
+function Arena:SetScreen(data)
+	local s = self.Screen
+	if data.topic then s.Topic.Text = data.topic end
+	if data.number then s.Number.Text = data.number end
+	if data.timer then s.Timer.Text = data.timer end
+	if data.question then s.Question.Text = data.question end
+	if data.info then s.Info.Text = data.info end
+	if data.accent and s.Header then
+		s.Header.BackgroundColor3 = data.accent
+	end
+end
+
+local function setPadSolid(pad, color)
+	pad.CanCollide = true
+	pad.Transparency = 0
+	pad.Material = Enum.Material.SmoothPlastic
+	pad.Color = color
+	local light = pad:FindFirstChild("Cahaya")
+	if light then
+		light.Brightness = 0
+	end
+end
+
+-- Menampilkan soal di kotak jawaban & papan
+function Arena:SetQuestion(prepared)
+	for i = 1, 4 do
+		self.ActivePads[i] = false
+		self.PadColors[i] = IDLE_PAD_COLOR
+	end
+	for _, option in ipairs(prepared.options) do
+		self.ActivePads[option.pad] = true
+		self.PadColors[option.pad] = option.color
+	end
+	for i, pad in ipairs(self.Pads) do
+		setPadSolid(pad, self.PadColors[i])
+		local sign = self.Signs[i]
+		local billboard = pad:FindFirstChild("Huruf")
+		local option
+		for _, o in ipairs(prepared.options) do
+			if o.pad == i then
+				option = o
+			end
+		end
+		sign.BackgroundColor3 = self.PadColors[i]
+		sign.Jumlah.Text = ""
+		if option then
+			sign.Huruf.Text = option.letter
+			sign.Jawaban.Text = option.text
+			if billboard then
+				billboard.Enabled = true
+				billboard.Teks.Text = option.letter
+				billboard.Teks.TextColor3 = option.color:Lerp(WHITE, 0.35)
+			end
+		else
+			sign.Huruf.Text = ""
+			sign.Jawaban.Text = "—"
+			if billboard then
+				billboard.Enabled = false
+			end
+		end
+	end
+end
+
+-- Mengungkap jawaban: kotak salah jatuh, kotak benar bersinar + konfeti
+function Arena:Reveal(correctPad, counts)
+	for i, pad in ipairs(self.Pads) do
+		local sign = self.Signs[i]
+		if self.ActivePads[i] then
+			sign.Jumlah.Text = "👥 " .. tostring(counts[i] or 0) .. " pemain"
+		end
+		if i == correctPad then
+			pad.Material = Enum.Material.Neon
+			local light = pad:FindFirstChild("Cahaya")
+			if light then
+				light.Brightness = 3
+			end
+			local confetti = pad:FindFirstChild("Konfeti")
+			if confetti then
+				confetti:Emit(120)
+			end
+			sign.Jawaban.Text = "✔ " .. sign.Jawaban.Text
+		else
+			pad.CanCollide = false
+			pad.Transparency = 0.8
+			pad.Color = DARK
+			sign.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+		end
+	end
+end
+
+-- Mengembalikan semua kotak menjadi padat (setelah penjelasan / saat lobi)
+function Arena:ResetPads(idle)
+	for i, pad in ipairs(self.Pads) do
+		local color = self.PadColors[i] or IDLE_PAD_COLOR
+		if idle then
+			color = Config.PadColors[i]
+			self.ActivePads[i] = false
+			local sign = self.Signs[i]
+			sign.BackgroundColor3 = color
+			sign.Huruf.Text = Config.PadLetters[i]
+			sign.Jawaban.Text = "Menunggu soal..."
+			sign.Jumlah.Text = ""
+			local billboard = pad:FindFirstChild("Huruf")
+			if billboard then
+				billboard.Enabled = true
+				billboard.Teks.Text = Config.PadLetters[i]
+				billboard.Teks.TextColor3 = WHITE
+			end
+		end
+		setPadSolid(pad, color)
+	end
+end
+
+function Arena:SetHallOfFame(ranking)
+	if not self.FameList then
+		return
+	end
+	local medals = { "🥇", "🥈", "🥉", "4.", "5." }
+	local lines = {}
+	for i = 1, math.min(5, #ranking) do
+		local r = ranking[i]
+		table.insert(lines, string.format("%s  %s  —  %d poin (%d/%d benar)", medals[i], r.name, r.score, r.correct, r.total))
+	end
+	self.FameList.Text = #lines > 0 and table.concat(lines, "\n") or "Belum ada juara."
+end
+
+function Arena:CelebratePodium()
+	for _, block in ipairs(self.Podiums) do
+		local emitter = block:FindFirstChild("Konfeti")
+		if emitter then
+			emitter:Emit(100)
+		end
+	end
+end
+
+-- Pemain yang jatuh ke Lubang Data dikembalikan ke Garis Start
+function Arena:ConnectPit()
+	local cooldown = {}
+	self.Pit.Touched:Connect(function(hit)
+		local character = hit.Parent
+		local player = character and Players:GetPlayerFromCharacter(character)
+		if not player or cooldown[player] then
+			return
+		end
+		cooldown[player] = true
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if root then
+			root.AssemblyLinearVelocity = Vector3.zero
+			character:PivotTo(self:GetStartCFrame())
+		end
+		task.delay(1, function()
+			cooldown[player] = nil
+		end)
+	end)
+end
+
+-- Animasi hiasan (globe berputar, paket data berjalan di kabel)
+function Arena:StartDecorations()
+	local deco = self.Folder:FindFirstChild("Dekorasi")
+	if not deco then
+		return
+	end
+	local globe = deco:FindFirstChild("GlobeInternet")
+	if globe then
+		local base = globe.CFrame
+		local angle = 0
+		RunService.Heartbeat:Connect(function(dt)
+			angle += dt * 0.6
+			globe.CFrame = base * CFrame.new(0, math.sin(angle * 1.5) * 0.8, 0) * CFrame.Angles(0, angle, 0)
+		end)
+	end
+	for _, cable in ipairs(deco:GetChildren()) do
+		local from, to = cable:GetAttribute("Dari"), cable:GetAttribute("Ke")
+		if cable.Name == "Kabel" and from and to then
+			for n = 0, 1 do
+				local packet = part({ Name = "PaketData", Size = Vector3.new(0.9, 0.9, 0.9), Position = from + Vector3.new(0, 0.6, 0),
+					Color = Color3.fromRGB(255, 255, 140), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false,
+					CanTouch = false }, deco)
+				local info = TweenInfo.new(4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
+				local tween = TweenService:Create(packet, info, { Position = to + Vector3.new(0, 0.6, 0) })
+				task.delay(n * 2 + math.random(), function()
+					tween:Play()
+				end)
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------
+-- FUNGSI UTAMA
+---------------------------------------------------------------------
+function MapBuilder.Build()
+	local folder = workspace:FindFirstChild(ARENA_NAME)
+	if folder and not isValid(folder) then
+		folder:Destroy()
+		folder = nil
+	end
+	if not folder then
+		folder = buildArena()
+	end
+	setupWorld(folder)
+	return Arena.new(folder)
+end
+
+return MapBuilder
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">PlayerData</string>
+          <string name="Source"><![CDATA[--[[
+	PlayerData: menyimpan XP, jumlah ronde, dan statistik jawaban siswa (DataStore).
+	Jika DataStore tidak tersedia (misal API Services belum diaktifkan), data hanya
+	disimpan selama sesi berjalan dan game tetap bisa dimainkan.
+]]
+
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("QuizShared"):WaitForChild("Config"))
+
+local PlayerData = {}
+
+local cache = {}
+local store = nil
+local storeAvailable = false
+
+if Config.UseDataStore then
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(Config.DataStoreName)
+	end)
+	if ok then
+		store = result
+		storeAvailable = true
+	else
+		warn("[NetQuest] DataStore tidak tersedia, XP tidak akan tersimpan permanen: " .. tostring(result))
+	end
+end
+
+local function defaultData()
+	return { xp = 0, rounds = 0, correct = 0, answered = 0, wins = 0 }
+end
+
+local function keyFor(player)
+	return "siswa_" .. player.UserId
+end
+
+function PlayerData.Load(player)
+	local data = defaultData()
+	if storeAvailable then
+		local ok, saved = pcall(function()
+			return store:GetAsync(keyFor(player))
+		end)
+		if ok and type(saved) == "table" then
+			for key, value in pairs(saved) do
+				data[key] = value
+			end
+		elseif not ok then
+			warn("[NetQuest] Gagal memuat data " .. player.Name .. ": " .. tostring(saved))
+			storeAvailable = false -- hindari spam error (misal di Studio tanpa akses API)
+		end
+	end
+	cache[player] = data
+	return data
+end
+
+function PlayerData.Get(player)
+	return cache[player] or defaultData()
+end
+
+function PlayerData.Save(player)
+	local data = cache[player]
+	if not data or not storeAvailable then
+		return
+	end
+	local ok, err = pcall(function()
+		store:SetAsync(keyFor(player), data)
+	end)
+	if not ok then
+		warn("[NetQuest] Gagal menyimpan data " .. player.Name .. ": " .. tostring(err))
+	end
+end
+
+function PlayerData.Release(player)
+	PlayerData.Save(player)
+	cache[player] = nil
+end
+
+function PlayerData.SaveAll()
+	for player in pairs(cache) do
+		PlayerData.Save(player)
+	end
+end
+
+-- Mengembalikan gelar sekarang, gelar berikutnya (atau nil), dan indeks gelar
+function PlayerData.GetRank(xp)
+	local current, index = Config.Ranks[1], 1
+	for i, rank in ipairs(Config.Ranks) do
+		if xp >= rank.xp then
+			current, index = rank, i
+		end
+	end
+	return current, Config.Ranks[index + 1], index
+end
+
+-- Menambahkan hasil ronde. Mengembalikan data terbaru & apakah naik gelar.
+function PlayerData.AddRoundResult(player, score, correct, answered, isWinner)
+	local data = cache[player]
+	if not data then
+		return defaultData(), false
+	end
+	local _, _, before = PlayerData.GetRank(data.xp)
+	data.xp += score
+	data.rounds += 1
+	data.correct += correct
+	data.answered += answered
+	if isWinner then
+		data.wins += 1
+	end
+	local _, _, after = PlayerData.GetRank(data.xp)
+	task.spawn(PlayerData.Save, player)
+	return data, after > before
+end
+
+return PlayerData
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="9">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="10">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="11">
+        <Properties>
+          <string name="Name">QuizClient</string>
+          <string name="Source"><![CDATA[--[[
+	NET QUEST - Client (tampilan di layar pemain)
+	Menampilkan: soal & timer, kartu jawaban, poin/streak, efek benar/salah,
+	penjelasan materi, hasil ronde, Zona Materi, Cara Main, dan Panel Guru.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+local player = Players.LocalPlayer
+local Shared = ReplicatedStorage:WaitForChild("QuizShared")
+local Config = require(Shared:WaitForChild("Config"))
+local Materi = require(Shared:WaitForChild("Materi"))
+local Ui = require(script:WaitForChild("Ui"))
+local T = Ui.Theme
+
+local remotes = ReplicatedStorage:WaitForChild("QuizRemotes")
+local QuizEvent = remotes:WaitForChild("QuizEvent")
+local TeacherEvent = remotes:WaitForChild("TeacherCommand")
+local ReadyEvent = remotes:WaitForChild("ClientReady")
+local HintFunction = remotes:WaitForChild("UseHint")
+
+---------------------------------------------------------------------
+-- STATE
+---------------------------------------------------------------------
+local state = {
+	mode = "idle", -- idle / waiting / intermission / countdown / question / explain / results
+	endsAt = 0,
+	duration = 1,
+	lastSecond = -1,
+	options = {},
+	kind = "PG",
+	myPad = nil,
+	hints = 0,
+	hintUsed = false,
+	score = 0,
+	streak = 0,
+	settings = nil,
+	hiddenPads = {},
+	savedPadColors = {},
+}
+
+local function serverNow()
+	return workspace:GetServerTimeNow()
+end
+
+---------------------------------------------------------------------
+-- SUARA
+---------------------------------------------------------------------
+local sounds = {}
+for name, id in pairs(Config.Sounds) do
+	if id ~= "" then
+		sounds[name] = Ui.new("Sound", { Name = "NetQuest_" .. name, SoundId = id, Volume = 0.6, Parent = SoundService })
+	end
+end
+if Config.MusicId ~= "" then
+	local music = Ui.new("Sound", { Name = "NetQuest_Musik", SoundId = Config.MusicId, Volume = 0.25, Looped = true,
+		Parent = SoundService })
+	music:Play()
+end
+local function play(name)
+	local sound = sounds[name]
+	if sound then
+		sound:Play()
+	end
+end
+
+---------------------------------------------------------------------
+-- ROOT GUI
+---------------------------------------------------------------------
+local gui = Ui.new("ScreenGui", {
+	Name = "NetQuestGui",
+	ResetOnSpawn = false,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	Parent = player:WaitForChild("PlayerGui"),
+})
+
+-- Panel berukuran piksel ikut mengecil di layar HP
+local pixelScales = {}
+local function addPixelScale(frame)
+	local scale = Ui.new("UIScale", { Parent = frame })
+	table.insert(pixelScales, scale)
+	return scale
+end
+local function updatePixelScales()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local value = math.clamp(math.min(camera.ViewportSize.Y / 760, camera.ViewportSize.X / 1100), 0.55, 1)
+	for _, scale in ipairs(pixelScales) do
+		scale.Scale = value
+	end
+end
+
+-- Kilatan layar (hijau = benar, merah = salah)
+local flash = Ui.new("Frame", { Name = "Kilat", Size = UDim2.fromScale(1, 1), BackgroundColor3 = T.Good,
+	BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 0, Parent = gui })
+local function flashScreen(color)
+	flash.BackgroundColor3 = color
+	flash.BackgroundTransparency = 0.55
+	Ui.tween(flash, 0.8, { BackgroundTransparency = 1 })
+end
+
+---------------------------------------------------------------------
+-- BANNER LOBI
+---------------------------------------------------------------------
+local banner = Ui.panel({ Name = "Banner", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10),
+	Size = UDim2.new(0.5, 0, 0.13, 0), Visible = false, Parent = gui })
+Ui.sizeLimit(banner, Vector2.new(300, 70), Vector2.new(760, 120))
+local bannerTitle = Ui.text({ Position = UDim2.new(0, 12, 0.06, 0), Size = UDim2.new(1, -24, 0.5, 0),
+	Font = Enum.Font.FredokaOne, MaxTextSize = 34, Parent = banner })
+local bannerSub = Ui.text({ Position = UDim2.new(0, 12, 0.56, 0), Size = UDim2.new(1, -24, 0.38, 0),
+	TextColor3 = T.Sub, Font = Enum.Font.GothamMedium, MaxTextSize = 20, Parent = banner })
+
+---------------------------------------------------------------------
+-- PANEL SOAL (atas)
+---------------------------------------------------------------------
+local questionPanel = Ui.panel({ Name = "PanelSoal", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10),
+	Size = UDim2.new(0.62, 0, 0.23, 0), Visible = false, Parent = gui })
+Ui.sizeLimit(questionPanel, Vector2.new(320, 120), Vector2.new(940, 220))
+local questionStroke = questionPanel:FindFirstChildOfClass("UIStroke")
+local topicChip = Ui.text({ Position = UDim2.new(0, 14, 0, 6), Size = UDim2.new(0.5, 0, 0.15, 0),
+	TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.Sub, MaxTextSize = 18, Parent = questionPanel })
+local counterLabel = Ui.text({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -90, 0, 6), Size = UDim2.new(0.3, 0, 0.15, 0),
+	TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = T.Sub, MaxTextSize = 18, Parent = questionPanel })
+local bossBadge = Ui.text({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0, 210, 0, 30),
+	BackgroundTransparency = 0, BackgroundColor3 = T.Bad, Text = "⚠ SOAL BOS • POIN x2 ⚠", Font = Enum.Font.FredokaOne,
+	Visible = false, Parent = questionPanel })
+Ui.corner(bossBadge, 8)
+local questionText = Ui.text({ Position = UDim2.new(0, 14, 0.2, 0), Size = UDim2.new(1, -110, 0.56, 0),
+	MaxTextSize = 34, Parent = questionPanel })
+local choiceHint = Ui.text({ Position = UDim2.new(0, 14, 0.76, 0), Size = UDim2.new(1, -110, 0.14, 0),
+	TextColor3 = T.Gold, MaxTextSize = 20, Parent = questionPanel })
+local timerBack = Ui.new("Frame", { Position = UDim2.new(0, 14, 1, -14), Size = UDim2.new(1, -28, 0, 7),
+	BackgroundColor3 = Color3.fromRGB(40, 45, 80), BorderSizePixel = 0, Parent = questionPanel })
+Ui.corner(timerBack, 4)
+local timerFill = Ui.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = T.Good, BorderSizePixel = 0,
+	Parent = timerBack })
+Ui.corner(timerFill, 4)
+local timerCircle = Ui.new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.48, 0),
+	Size = UDim2.new(0, 72, 0, 72), BackgroundColor3 = T.Panel2, BorderSizePixel = 0, Parent = questionPanel })
+Ui.corner(timerCircle, 36)
+local timerStroke = Ui.stroke(timerCircle, T.Good, 4)
+local timerNumber = Ui.text({ Size = UDim2.fromScale(1, 1), Font = Enum.Font.FredokaOne, MaxTextSize = 40, Parent = timerCircle })
+
+---------------------------------------------------------------------
+-- KARTU JAWABAN (bawah)
+---------------------------------------------------------------------
+local optionsBar = Ui.new("Frame", { Name = "KartuJawaban", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12),
+	Size = UDim2.new(0.66, 0, 0.13, 0), BackgroundTransparency = 1, Visible = false, Parent = gui })
+Ui.sizeLimit(optionsBar, Vector2.new(320, 64), Vector2.new(1000, 120))
+Ui.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder,
+	Parent = optionsBar })
+
+local cards = {}
+for i = 1, 4 do
+	local card = Ui.new("Frame", { Name = "Kartu" .. i, LayoutOrder = i, Size = UDim2.new(0.25, -6, 1, 0),
+		BackgroundColor3 = Config.PadColors[i], BorderSizePixel = 0, Parent = optionsBar })
+	Ui.corner(card, 12)
+	local stroke = Ui.stroke(card, Color3.new(1, 1, 1), 0)
+	local letter = Ui.text({ Position = UDim2.new(0, 4, 0, 0), Size = UDim2.new(0.2, 0, 1, 0), Font = Enum.Font.FredokaOne,
+		MaxTextSize = 40, TextStrokeTransparency = 0.6, Parent = card })
+	local text = Ui.text({ Position = UDim2.new(0.21, 0, 0, 6), Size = UDim2.new(0.77, 0, 1, -12),
+		TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 22, TextStrokeTransparency = 0.7, Parent = card })
+	local count = Ui.text({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 2), Size = UDim2.new(0.5, 0, 0.26, 0),
+		TextXAlignment = Enum.TextXAlignment.Right, MaxTextSize = 16, Text = "", Parent = card })
+	local youTag = Ui.text({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -4), Size = UDim2.new(0, 110, 0, 24),
+		BackgroundTransparency = 0, BackgroundColor3 = Color3.new(1, 1, 1), TextColor3 = T.Panel, Text = "📍 POSISIMU",
+		MaxTextSize = 16, Visible = false, Parent = card })
+	Ui.corner(youTag, 8)
+	cards[i] = { frame = card, stroke = stroke, letter = letter, text = text, count = count, you = youTag }
+end
+
+---------------------------------------------------------------------
+-- HUD KANAN (poin, streak, tombol)
+---------------------------------------------------------------------
+local hud = Ui.panel({ Name = "HUD", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.48, 0),
+	Size = UDim2.new(0, 170, 0, 236), Parent = gui })
+addPixelScale(hud)
+Ui.padding(hud, 8)
+Ui.new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = hud })
+local scoreLabel = Ui.text({ LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 34), Text = "⭐ 0", Font = Enum.Font.FredokaOne,
+	TextColor3 = T.Gold, MaxTextSize = 30, Parent = hud })
+local streakLabel = Ui.text({ LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 24), Text = "🔥 Streak 0", TextColor3 = Color3.fromRGB(255, 160, 80),
+	MaxTextSize = 20, Parent = hud })
+local hintButton, materiButton, helpButton
+local function useHint() end -- diisi di bawah
+hintButton = Ui.button({ LayoutOrder = 3, Size = UDim2.new(1, 0, 0, 40), Text = "💡 50:50 (0)",
+	BackgroundColor3 = Color3.fromRGB(150, 90, 255) }, function()
+	useHint()
+end)
+hintButton.Parent = hud
+materiButton = Ui.button({ LayoutOrder = 4, Size = UDim2.new(1, 0, 0, 40), Text = "📚 Materi", BackgroundColor3 = Color3.fromRGB(40, 150, 110) })
+materiButton.Parent = hud
+helpButton = Ui.button({ LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 40), Text = "❓ Cara Main", BackgroundColor3 = Color3.fromRGB(60, 90, 170) })
+helpButton.Parent = hud
+
+---------------------------------------------------------------------
+-- TOAST (teks besar di tengah) & HITUNG MUNDUR
+---------------------------------------------------------------------
+local toast = Ui.new("Frame", { Name = "Toast", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.45, 0),
+	Size = UDim2.new(0.7, 0, 0.2, 0), BackgroundTransparency = 1, Visible = false, Parent = gui })
+local toastTitle = Ui.text({ Size = UDim2.fromScale(1, 0.62), Font = Enum.Font.FredokaOne, TextStrokeTransparency = 0,
+	TextStrokeColor3 = T.Panel, MaxTextSize = 80, Parent = toast })
+local toastSub = Ui.text({ Position = UDim2.fromScale(0, 0.62), Size = UDim2.fromScale(1, 0.36), TextStrokeTransparency = 0.2,
+	TextStrokeColor3 = T.Panel, MaxTextSize = 28, Parent = toast })
+local toastToken = 0
+local function showToast(title, sub, color, duration)
+	toastToken += 1
+	local token = toastToken
+	toastTitle.Text = title
+	toastTitle.TextColor3 = color or T.Text
+	toastSub.Text = sub or ""
+	toast.Visible = true
+	Ui.pop(toast, 0.4)
+	task.delay(duration or 2.5, function()
+		if toastToken == token then
+			toast.Visible = false
+		end
+	end)
+end
+
+local countdownLabel = Ui.text({ Name = "HitungMundur", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42),
+	Size = UDim2.fromScale(0.5, 0.3), Font = Enum.Font.FredokaOne, TextStrokeTransparency = 0, TextStrokeColor3 = T.Panel,
+	TextColor3 = T.Gold, Visible = false, MaxTextSize = 150, Parent = gui })
+
+---------------------------------------------------------------------
+-- PANEL PENJELASAN
+---------------------------------------------------------------------
+local explain = Ui.panel({ Name = "Penjelasan", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0.86, -16),
+	Size = UDim2.new(0.62, 0, 0.22, 0), Visible = false, Parent = gui })
+Ui.sizeLimit(explain, Vector2.new(320, 110), Vector2.new(920, 210))
+local explainTitle = Ui.text({ Position = UDim2.new(0, 14, 0, 8), Size = UDim2.new(1, -28, 0.3, 0), TextColor3 = T.Good,
+	Font = Enum.Font.FredokaOne, MaxTextSize = 28, Parent = explain })
+local explainText = Ui.text({ Position = UDim2.new(0, 14, 0.36, 0), Size = UDim2.new(1, -28, 0.54, 0),
+	Font = Enum.Font.GothamMedium, MaxTextSize = 22, Parent = explain })
+local explainBack = Ui.new("Frame", { Position = UDim2.new(0, 14, 1, -12), Size = UDim2.new(1, -28, 0, 5),
+	BackgroundColor3 = Color3.fromRGB(40, 45, 80), BorderSizePixel = 0, Parent = explain })
+local explainFill = Ui.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = T.Accent, BorderSizePixel = 0,
+	Parent = explainBack })
+
+---------------------------------------------------------------------
+-- MODAL (jendela tengah) helper
+---------------------------------------------------------------------
+local openModals = {}
+local function makeModal(name, titleText, widthScale, heightScale)
+	local modal = Ui.panel({ Name = name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(widthScale, heightScale), Visible = false, ZIndex = 5, Parent = gui })
+	Ui.sizeLimit(modal, Vector2.new(320, 260), Vector2.new(1000, 640))
+	Ui.text({ Position = UDim2.new(0, 16, 0, 8), Size = UDim2.new(1, -80, 0.09, 0), Text = titleText,
+		Font = Enum.Font.FredokaOne, TextColor3 = T.Gold, MaxTextSize = 34, ZIndex = 5, Parent = modal })
+	local close = Ui.button({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 10), Size = UDim2.new(0, 40, 0, 40),
+		Text = "✖", BackgroundColor3 = T.Bad, ZIndex = 6 }, function()
+		modal.Visible = false
+	end)
+	close.Parent = modal
+	openModals[name] = modal
+	return modal
+end
+local function closeAllModals()
+	for _, modal in pairs(openModals) do
+		modal.Visible = false
+	end
+end
+
+---------------------------------------------------------------------
+-- ZONA MATERI (pembaca materi)
+---------------------------------------------------------------------
+local materiModal = makeModal("ModalMateri", "📚 ZONA MATERI", 0.8, 0.8)
+local tabList = Ui.new("ScrollingFrame", { Position = UDim2.new(0.02, 0, 0.13, 0), Size = UDim2.new(0.28, 0, 0.84, 0),
+	BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, CanvasSize = UDim2.new(),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = materiModal })
+Ui.new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = tabList })
+local materiContent = Ui.new("ScrollingFrame", { Position = UDim2.new(0.32, 0, 0.13, 0), Size = UDim2.new(0.66, 0, 0.84, 0),
+	BackgroundColor3 = T.Panel2, BackgroundTransparency = 0.3, BorderSizePixel = 0, ScrollBarThickness = 6,
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = materiModal })
+Ui.corner(materiContent, 10)
+Ui.padding(materiContent, 12)
+Ui.new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = materiContent })
+
+local function showMateri(topicId)
+	Ui.clear(materiContent)
+	local topic = Config.GetTopic(topicId)
+	Ui.text({ LayoutOrder = 0, Size = UDim2.new(1, -8, 0, 34), Text = topic.icon .. " " .. topic.name, TextColor3 = topic.color,
+		Font = Enum.Font.FredokaOne, TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 28, ZIndex = 5, Parent = materiContent })
+	for i, point in ipairs(Materi[topicId] or {}) do
+		Ui.text({ LayoutOrder = i, Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextScaled = false,
+			TextSize = 19, Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, Text = "• " .. point,
+			ZIndex = 5, Parent = materiContent })
+	end
+	materiContent.CanvasPosition = Vector2.zero
+end
+
+local function openMateri(topicId)
+	if state.mode == "question" then
+		showToast("Fokus ke soal! 🧠", "Materi bisa dibaca lagi setelah soal selesai.", T.Gold, 2)
+		return
+	end
+	closeAllModals()
+	materiModal.Visible = true
+	Ui.pop(materiModal, 0.85)
+	showMateri(topicId or "konsep")
+end
+
+for order, topic in ipairs(Config.Topics) do
+	if topic.id ~= "campuran" then
+		local tab = Ui.button({ LayoutOrder = order, Size = UDim2.new(1, -6, 0, 44), Text = topic.icon .. " " .. topic.name,
+			BackgroundColor3 = topic.color, TextColor3 = T.Panel, MaxTextSize = 18, ZIndex = 5 }, function()
+			showMateri(topic.id)
+		end)
+		tab.Parent = tabList
+	end
+end
+materiButton.Activated:Connect(function()
+	openMateri("konsep")
+end)
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "BacaMateri" and prompt.Parent then
+		openMateri(prompt.Parent:GetAttribute("TopicId"))
+	end
+end)
+
+---------------------------------------------------------------------
+-- CARA MAIN
+---------------------------------------------------------------------
+local helpModal = makeModal("ModalCaraMain", "❓ CARA MAIN NET QUEST", 0.7, 0.78)
+local helpBody = Ui.new("ScrollingFrame", { Position = UDim2.new(0.04, 0, 0.13, 0), Size = UDim2.new(0.92, 0, 0.7, 0),
+	BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 5, CanvasSize = UDim2.new(),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = helpModal })
+Ui.new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = helpBody })
+local helpLines = {
+	"1️⃣  Baca soal di LAYAR BESAR atau di bagian atas layarmu.",
+	"2️⃣  LARI dan BERDIRI di kotak jawaban (A / B / C / D atau BENAR / SALAH) sebelum waktu habis.",
+	"3️⃣  Saat waktu habis, kotak yang salah akan JATUH! Tenang, kamu kembali ke Garis Start dan tetap ikut kuis.",
+	"4️⃣  Jawab lebih CEPAT = bonus poin. Benar berturut-turut = bonus STREAK 🔥",
+	"5️⃣  Benar 3x berturut-turut = dapat bantuan 💡 50:50 yang menghapus 2 jawaban salah.",
+	"6️⃣  Soal terakhir adalah ⚠ SOAL BOS ⚠ dengan poin x2!",
+	"7️⃣  Baca PENJELASAN setelah setiap soal dan papan ZONA MATERI di lobi (tekan E / ketuk papan).",
+	"8️⃣  Kumpulkan XP untuk naik gelar: Kabel Pemula → Hub Junior → Switch Cekatan → Router Hebat → Server Master → Legenda Internet!",
+}
+for i, line in ipairs(helpLines) do
+	Ui.text({ LayoutOrder = i, Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextScaled = false, TextSize = 19,
+		Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left, Text = line, ZIndex = 5, Parent = helpBody })
+end
+local readyButton = Ui.button({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -14), Size = UDim2.new(0.4, 0, 0.1, 0),
+	Text = "Siap Belajar! 👍", BackgroundColor3 = T.Good, MaxTextSize = 26, ZIndex = 6 }, function()
+	helpModal.Visible = false
+end)
+readyButton.Parent = helpModal
+helpButton.Activated:Connect(function()
+	closeAllModals()
+	helpModal.Visible = true
+	Ui.pop(helpModal, 0.85)
+end)
+
+---------------------------------------------------------------------
+-- HASIL RONDE
+---------------------------------------------------------------------
+local resultsModal = makeModal("ModalHasil", "🏆 HASIL RONDE 🏆", 0.8, 0.8)
+local rankingList = Ui.new("ScrollingFrame", { Position = UDim2.new(0.03, 0, 0.13, 0), Size = UDim2.new(0.45, 0, 0.84, 0),
+	BackgroundColor3 = T.Panel2, BackgroundTransparency = 0.3, BorderSizePixel = 0, ScrollBarThickness = 5,
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = resultsModal })
+Ui.corner(rankingList, 10)
+Ui.padding(rankingList, 8)
+Ui.new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = rankingList })
+local personal = Ui.new("ScrollingFrame", { Position = UDim2.new(0.51, 0, 0.13, 0), Size = UDim2.new(0.46, 0, 0.84, 0),
+	BackgroundColor3 = T.Panel2, BackgroundTransparency = 0.3, BorderSizePixel = 0, ScrollBarThickness = 5,
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = resultsModal })
+Ui.corner(personal, 10)
+Ui.padding(personal, 10)
+Ui.new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = personal })
+
+local function personalLine(order, text, color, size)
+	return Ui.text({ LayoutOrder = order, Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, TextScaled = false,
+		TextSize = size or 19, TextXAlignment = Enum.TextXAlignment.Left, Text = text, TextColor3 = color or T.Text,
+		Font = Enum.Font.GothamBold, ZIndex = 5, Parent = personal })
+end
+
+local function showRanking(ranking)
+	Ui.clear(rankingList)
+	local medals = { "🥇", "🥈", "🥉" }
+	for i, row in ipairs(ranking) do
+		local isMe = row.userId == player.UserId
+		local frame = Ui.new("Frame", { LayoutOrder = i, Size = UDim2.new(1, -4, 0, 38),
+			BackgroundColor3 = isMe and Color3.fromRGB(70, 110, 220) or T.Panel, BorderSizePixel = 0, ZIndex = 5, Parent = rankingList })
+		Ui.corner(frame, 8)
+		Ui.text({ Position = UDim2.new(0, 8, 0, 4), Size = UDim2.new(0.68, -8, 1, -8), TextXAlignment = Enum.TextXAlignment.Left,
+			Text = (medals[i] or (i .. ".")) .. "  " .. row.name, MaxTextSize = 20, ZIndex = 5, Parent = frame })
+		Ui.text({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 4), Size = UDim2.new(0.32, 0, 1, -8),
+			TextXAlignment = Enum.TextXAlignment.Right, Text = row.score .. " • " .. row.correct .. "/" .. row.total .. "✔",
+			TextColor3 = T.Gold, MaxTextSize = 18, ZIndex = 5, Parent = frame })
+	end
+	if #ranking == 0 then
+		Ui.text({ Size = UDim2.new(1, 0, 0, 40), Text = "Belum ada peserta.", ZIndex = 5, Parent = rankingList })
+	end
+end
+
+local function showSummary(s)
+	Ui.clear(personal)
+	local accuracy = s.answered > 0 and math.floor(s.correct / s.answered * 100 + 0.5) or 0
+	local medal = ({ "🥇", "🥈", "🥉" })[s.position] or "🎖"
+	personalLine(1, medal .. " Peringkatmu: #" .. s.position .. " dari " .. s.players, T.Gold, 24)
+	personalLine(2, "⭐ Skor: " .. s.score .. " poin")
+	personalLine(3, "✔ Benar: " .. s.correct .. " dari " .. s.answered .. " soal (" .. accuracy .. "%)")
+	personalLine(4, "🔥 Streak terbaik: " .. s.bestStreak)
+	local message
+	if accuracy >= 90 then
+		message = "Luar biasa! Kamu sudah menguasai materi ini! 🌟"
+	elseif accuracy >= 70 then
+		message = "Bagus sekali! Sedikit lagi jadi master! 💪"
+	elseif accuracy >= 50 then
+		message = "Lumayan! Baca lagi materinya, pasti bisa lebih baik! 📖"
+	else
+		message = "Jangan menyerah! Baca Zona Materi lalu coba lagi ya! 🚀"
+	end
+	personalLine(5, message, T.Good)
+	if s.strongTopic then
+		personalLine(6, "💪 Paling kuat: " .. s.strongTopic .. " (" .. s.strongText .. ")", Color3.fromRGB(150, 230, 255))
+	end
+	if s.weakTopic then
+		personalLine(7, "📚 Perlu dipelajari lagi: " .. s.weakTopic .. " (" .. s.weakText .. ")", Color3.fromRGB(255, 170, 120))
+		local study = Ui.button({ LayoutOrder = 8, Size = UDim2.new(1, -6, 0, 40), Text = "📖 Pelajari materi ini sekarang",
+			BackgroundColor3 = Color3.fromRGB(40, 150, 110), ZIndex = 6 }, function()
+			openMateri(s.weakId)
+		end)
+		study.Parent = personal
+	end
+	personalLine(9, "🎖 Gelar: " .. s.title .. "   •   XP: " .. s.xp, s.titleColor, 20)
+	if s.nextTitle then
+		personalLine(10, "➡ " .. (s.nextXp - s.xp) .. " XP lagi menuju gelar " .. s.nextTitle, T.Sub, 17)
+	else
+		personalLine(10, "👑 Kamu sudah mencapai gelar tertinggi!", T.Gold, 17)
+	end
+	if s.rankUp then
+		personalLine(11, "🎉 NAIK GELAR! Selamat, kamu sekarang " .. s.title .. "!", T.Gold, 22)
+		task.delay(1, function()
+			showToast("🎉 NAIK GELAR! 🎉", "Gelar baru: " .. s.title, s.titleColor, 3.5)
+			play("Fanfare")
+		end)
+	end
+end
+
+---------------------------------------------------------------------
+-- PANEL GURU
+---------------------------------------------------------------------
+local teacherToggle, teacherPanel, teacherRefresh
+local function buildTeacherPanel()
+	if teacherPanel then
+		return
+	end
+	teacherToggle = Ui.button({ Name = "TombolGuru", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.3, 0),
+		Size = UDim2.new(0, 150, 0, 40), Text = "🎓 Panel Guru", BackgroundColor3 = Color3.fromRGB(230, 130, 40) })
+	teacherToggle.Parent = gui
+
+	teacherPanel = Ui.panel({ Name = "PanelGuru", AnchorPoint = Vector2.new(0, 0), Position = UDim2.new(0, 10, 0.3, 26),
+		Size = UDim2.new(0, 270, 0, 372), Visible = false, Parent = gui })
+	addPixelScale(teacherPanel)
+	Ui.padding(teacherPanel, 10)
+	Ui.new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = teacherPanel })
+	Ui.text({ LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 26), Text = "🎓 PANEL GURU", Font = Enum.Font.FredokaOne,
+		TextColor3 = T.Gold, MaxTextSize = 24, Parent = teacherPanel })
+
+	local function row(order, labelText)
+		local frame = Ui.new("Frame", { LayoutOrder = order, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1,
+			Parent = teacherPanel })
+		Ui.text({ Size = UDim2.new(0.38, 0, 1, 0), Text = labelText, TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = T.Sub, MaxTextSize = 16, Parent = frame })
+		return frame
+	end
+	local function stepper(frame, onMinus, onPlus)
+		local minus = Ui.button({ Position = UDim2.new(0.4, 0, 0, 0), Size = UDim2.new(0.16, 0, 1, 0), Text = "−",
+			BackgroundColor3 = T.Panel2 }, onMinus)
+		minus.Parent = frame
+		local value = Ui.text({ Position = UDim2.new(0.58, 0, 0, 0), Size = UDim2.new(0.24, 0, 1, 0), MaxTextSize = 20, Parent = frame })
+		local plus = Ui.button({ Position = UDim2.new(0.84, 0, 0, 0), Size = UDim2.new(0.16, 0, 1, 0), Text = "+",
+			BackgroundColor3 = T.Panel2 }, onPlus)
+		plus.Parent = frame
+		return value
+	end
+
+	local topicRow = row(2, "Topik")
+	local topicButton = Ui.button({ Position = UDim2.new(0.4, 0, 0, 0), Size = UDim2.new(0.6, 0, 1, 0), Text = "",
+		BackgroundColor3 = T.Panel2, MaxTextSize = 15 }, function()
+		local settings = state.settings
+		if not settings then
+			return
+		end
+		local index = 1
+		for i, topic in ipairs(Config.Topics) do
+			if topic.id == settings.topic then
+				index = i
+			end
+		end
+		local nextTopic = Config.Topics[index % #Config.Topics + 1]
+		TeacherEvent:FireServer("topic", nextTopic.id)
+	end)
+	topicButton.Parent = topicRow
+
+	local function currentSetting(key, default)
+		return state.settings and state.settings[key] or default
+	end
+	local countValue = stepper(row(3, "Jumlah soal"), function()
+		TeacherEvent:FireServer("count", math.max(5, currentSetting("count", 10) - 5))
+	end, function()
+		TeacherEvent:FireServer("count", math.min(30, currentSetting("count", 10) + 5))
+	end)
+	local timeValue = stepper(row(4, "Waktu/soal"), function()
+		TeacherEvent:FireServer("time", math.max(5, currentSetting("time", 20) - 5))
+	end, function()
+		TeacherEvent:FireServer("time", math.min(60, currentSetting("time", 20) + 5))
+	end)
+
+	local autoButton = Ui.button({ LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 34), Text = "", BackgroundColor3 = T.Panel2 }, function()
+		TeacherEvent:FireServer("auto", not (state.settings and state.settings.auto))
+	end)
+	autoButton.Parent = teacherPanel
+
+	local startButton = Ui.button({ LayoutOrder = 6, Size = UDim2.new(1, 0, 0, 40), Text = "▶  MULAI KUIS SEKARANG",
+		BackgroundColor3 = T.Good }, function()
+		TeacherEvent:FireServer("start")
+	end)
+	startButton.Parent = teacherPanel
+	local lockButton = Ui.button({ LayoutOrder = 7, Size = UDim2.new(1, 0, 0, 40), Text = "⏩  KUNCI JAWABAN SEKARANG",
+		BackgroundColor3 = Color3.fromRGB(230, 170, 40) }, function()
+		TeacherEvent:FireServer("lock")
+	end)
+	lockButton.Parent = teacherPanel
+	local stopButton = Ui.button({ LayoutOrder = 8, Size = UDim2.new(1, 0, 0, 40), Text = "⏹  HENTIKAN RONDE",
+		BackgroundColor3 = T.Bad }, function()
+		TeacherEvent:FireServer("stop")
+	end)
+	stopButton.Parent = teacherPanel
+	Ui.text({ LayoutOrder = 9, Size = UDim2.new(1, 0, 0, 40), Text = "Pengaturan baru berlaku di ronde berikutnya.",
+		TextColor3 = T.Sub, Font = Enum.Font.Gotham, MaxTextSize = 14, Parent = teacherPanel })
+
+	teacherToggle.Activated:Connect(function()
+		teacherPanel.Visible = not teacherPanel.Visible
+	end)
+
+	teacherRefresh = function()
+		local settings = state.settings
+		if not settings then
+			return
+		end
+		topicButton.Text = settings.topicName
+		countValue.Text = tostring(settings.count)
+		timeValue.Text = settings.time .. "s"
+		autoButton.Text = settings.auto and "🔁 Mulai otomatis: ON" or "✋ Mulai otomatis: OFF (manual)"
+		autoButton.BackgroundColor3 = settings.auto and Color3.fromRGB(40, 140, 100) or T.Panel2
+	end
+	teacherRefresh()
+	updatePixelScales()
+end
+
+local function checkTeacher()
+	if player:GetAttribute("IsTeacher") then
+		buildTeacherPanel()
+	end
+end
+player:GetAttributeChangedSignal("IsTeacher"):Connect(checkTeacher)
+checkTeacher()
+
+---------------------------------------------------------------------
+-- KOTAK JAWABAN 3D (deteksi posisi & efek 50:50 lokal)
+---------------------------------------------------------------------
+local function getPad(index)
+	local arena = workspace:FindFirstChild("ArenaKuis")
+	local folder = arena and arena:FindFirstChild("KotakJawaban")
+	return folder and folder:FindFirstChild("Pad" .. index)
+end
+
+local function padUnderMe()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil
+	end
+	for _, option in ipairs(state.options) do
+		local pad = getPad(option.pad)
+		if pad then
+			local rel = pad.CFrame:PointToObjectSpace(root.Position)
+			local half = pad.Size / 2
+			if math.abs(rel.X) <= half.X and math.abs(rel.Z) <= half.Z and rel.Y > -half.Y and rel.Y < 10 then
+				return option.pad
+			end
+		end
+	end
+	return nil
+end
+
+local function restoreLocalPads()
+	for index, color in pairs(state.savedPadColors) do
+		local pad = getPad(index)
+		if pad then
+			pad.Color = color
+		end
+	end
+	state.savedPadColors = {}
+end
+
+---------------------------------------------------------------------
+-- TAMPILAN PER FASE
+---------------------------------------------------------------------
+local function updateHud()
+	scoreLabel.Text = "⭐ " .. state.score
+	streakLabel.Text = "🔥 Streak " .. state.streak
+	hintButton.Text = "💡 50:50 (" .. state.hints .. ")"
+	local usable = state.mode == "question" and state.kind == "PG" and state.hints > 0 and not state.hintUsed
+	hintButton.BackgroundColor3 = usable and Color3.fromRGB(150, 90, 255) or Color3.fromRGB(70, 65, 100)
+end
+
+local function hideRoundUi()
+	questionPanel.Visible = false
+	optionsBar.Visible = false
+	explain.Visible = false
+	countdownLabel.Visible = false
+end
+
+local function cardForPad(pad)
+	for i, option in ipairs(state.options) do
+		if option.pad == pad then
+			return cards[i]
+		end
+	end
+	return nil
+end
+
+local function setupCards(options)
+	for i, card in ipairs(cards) do
+		local option = options[i]
+		card.frame.Visible = option ~= nil
+		card.you.Visible = false
+		card.stroke.Thickness = 0
+		card.count.Text = ""
+		card.frame.BackgroundTransparency = 0
+		card.text.TextTransparency = 0
+		card.letter.TextTransparency = 0
+		if option then
+			card.frame.BackgroundColor3 = option.color
+			card.letter.Text = option.letter
+			card.text.Text = option.text
+			card.frame.Size = #options == 2 and UDim2.new(0.4, -4, 1, 0) or UDim2.new(0.25, -6, 1, 0)
+		end
+	end
+end
+
+local function showBanner(title, sub)
+	banner.Visible = true
+	bannerTitle.Text = title
+	bannerSub.Text = sub or ""
+end
+
+local function lobbySubtitle()
+	local s = state.settings
+	if not s then
+		return "Baca ZONA MATERI di lobi sambil menunggu!"
+	end
+	return "Topik: " .. s.topicName .. "  •  " .. s.count .. " soal  •  Baca ZONA MATERI sambil menunggu!"
+end
+
+local handlers = {}
+
+function handlers.Settings(msg)
+	state.settings = msg
+	if teacherRefresh then
+		teacherRefresh()
+	end
+	if state.mode == "intermission" or state.mode == "waiting" then
+		bannerSub.Text = lobbySubtitle()
+	end
+end
+
+function handlers.Waiting(msg)
+	state.mode = "waiting"
+	hideRoundUi()
+	showBanner(msg.reason == "teacher" and "✋ Menunggu guru memulai kuis..." or "👋 Menunggu pemain lain...", lobbySubtitle())
+end
+
+function handlers.Intermission(msg)
+	state.mode = "intermission"
+	state.endsAt = msg.endsAt
+	hideRoundUi()
+	showBanner("⏳ Kuis dimulai sebentar lagi", lobbySubtitle())
+end
+
+function handlers.Countdown(msg)
+	state.mode = "countdown"
+	state.endsAt = msg.endsAt
+	state.lastSecond = -1
+	closeAllModals()
+	hideRoundUi()
+	showBanner("🚀 BERSIAP!", msg.topicName .. "  •  " .. msg.total .. " soal  •  Lihat layar besar!")
+	countdownLabel.Visible = true
+end
+
+function handlers.Question(msg)
+	state.mode = "question"
+	state.endsAt = msg.endsAt
+	state.duration = msg.duration
+	state.lastSecond = -1
+	state.options = msg.options
+	state.kind = msg.kind
+	state.myPad = nil
+	state.hintUsed = false
+	state.hiddenPads = {}
+	restoreLocalPads()
+	closeAllModals()
+	banner.Visible = false
+	explain.Visible = false
+	countdownLabel.Visible = false
+
+	questionPanel.Visible = true
+	topicChip.Text = msg.topicName
+	topicChip.TextColor3 = msg.topicColor
+	counterLabel.Text = "Soal " .. msg.index .. " / " .. msg.total
+	questionText.Text = msg.text
+	bossBadge.Visible = msg.isBoss
+	questionStroke.Color = msg.isBoss and T.Bad or msg.topicColor
+	questionStroke.Transparency = 0
+	choiceHint.Text = ""
+	Ui.pop(questionPanel, 0.85)
+
+	setupCards(msg.options)
+	optionsBar.Visible = true
+	updateHud()
+	play("Question")
+	if msg.isBoss then
+		showToast("⚠ SOAL BOS ⚠", "Poin dikali " .. Config.BossMultiplier .. "! Fokus!", T.Bad, 2)
+	end
+end
+
+function handlers.Stats(msg)
+	state.score, state.streak, state.hints = msg.score, msg.streak, msg.hints
+	updateHud()
+end
+
+local cheers = { "BENAR! 🎉", "MANTAP! 🔥", "HEBAT! ⭐", "KEREN! 😎", "JENIUS! 🧠" }
+function handlers.Result(msg)
+	state.score, state.streak, state.hints = msg.score, msg.streak, msg.hints
+	state.mode = "explain"
+	updateHud()
+	if msg.correct then
+		local sub = "+" .. msg.gained .. " poin"
+		if msg.streak >= 2 then
+			sub ..= "  •  🔥 Streak x" .. msg.streak
+		end
+		if msg.earnedHint then
+			sub ..= "  •  💡 Dapat bantuan 50:50!"
+			task.delay(0.4, function()
+				play("Hint")
+			end)
+		end
+		showToast(cheers[math.random(1, #cheers)], sub, T.Good, 2.6)
+		flashScreen(T.Good)
+		play("Correct")
+	elseif msg.answered then
+		showToast("SALAH 😅", "Tidak apa-apa! Baca penjelasannya ya.", T.Bad, 2.6)
+		flashScreen(T.Bad)
+		play("Wrong")
+	else
+		showToast("WAKTU HABIS ⏰", "Kamu belum berdiri di kotak jawaban mana pun.", T.Gold, 2.6)
+		flashScreen(T.Gold)
+		play("Wrong")
+	end
+	scoreLabel.TextColor3 = msg.correct and T.Good or T.Gold
+	Ui.pop(scoreLabel, 1.4)
+	task.delay(0.6, function()
+		scoreLabel.TextColor3 = T.Gold
+	end)
+end
+
+function handlers.Reveal(msg)
+	state.mode = "explain"
+	state.endsAt = msg.explainEndsAt
+	state.duration = math.max(1, msg.explainEndsAt - serverNow())
+	restoreLocalPads()
+	choiceHint.Text = ""
+	timerNumber.Text = "✔"
+	for i, option in ipairs(state.options) do
+		local card = cards[i]
+		card.count.Text = "👥 " .. (msg.counts[option.pad] or 0)
+		if option.pad == msg.correctPad then
+			card.stroke.Thickness = 4
+			card.frame.BackgroundTransparency = 0
+			Ui.pop(card.frame, 1.15)
+		else
+			card.stroke.Thickness = 0
+			card.frame.BackgroundTransparency = 0.65
+			card.text.TextTransparency = 0.5
+		end
+	end
+	local prefix = state.kind == "PG" and (msg.correctLetter .. ". ") or ""
+	explainTitle.Text = "✔ Jawaban benar: " .. prefix .. msg.correctText
+	explainText.Text = "📘 " .. msg.explanation
+	explain.Visible = true
+	Ui.pop(explain, 0.9)
+	updateHud()
+end
+
+function handlers.RoundEnd(msg)
+	state.mode = "results"
+	state.options = {}
+	hideRoundUi()
+	banner.Visible = false
+	closeAllModals()
+	showRanking(msg.ranking)
+	Ui.clear(personal)
+	personalLine(1, "Kamu belum ikut menjawab di ronde ini. Ikut ronde berikutnya ya! 😊", T.Sub)
+	resultsModal.Visible = true
+	Ui.pop(resultsModal, 0.8)
+	play("Fanfare")
+	if msg.ranking[1] then
+		showToast("🏆 " .. msg.ranking[1].name .. " 🏆", "Juara ronde ini dengan " .. msg.ranking[1].score .. " poin!", T.Gold, 4)
+	end
+end
+
+function handlers.Summary(msg)
+	showSummary(msg)
+end
+
+function handlers.Stopped()
+	state.mode = "idle"
+	state.options = {}
+	restoreLocalPads()
+	hideRoundUi()
+	showToast("⏹ Kuis dihentikan", "Guru menghentikan ronde ini.", T.Gold, 3)
+end
+
+QuizEvent.OnClientEvent:Connect(function(msg)
+	local handler = type(msg) == "table" and handlers[msg.type]
+	if handler then
+		handler(msg)
+	end
+end)
+
+---------------------------------------------------------------------
+-- BANTUAN 50:50
+---------------------------------------------------------------------
+useHint = function()
+	if state.mode ~= "question" then
+		showToast("💡 Belum bisa", "Bantuan dipakai saat soal sedang berlangsung.", T.Gold, 2)
+		return
+	end
+	local ok, wrongPads, info = pcall(function()
+		return HintFunction:InvokeServer()
+	end)
+	if not ok or not wrongPads then
+		showToast("💡 Bantuan", (ok and info) or "Coba lagi.", T.Gold, 2.2)
+		return
+	end
+	state.hints = info
+	state.hintUsed = true
+	play("Hint")
+	for _, padIndex in ipairs(wrongPads) do
+		state.hiddenPads[padIndex] = true
+		local card = cardForPad(padIndex)
+		if card then
+			card.frame.BackgroundTransparency = 0.75
+			card.text.TextTransparency = 0.6
+			card.letter.Text = "✖"
+		end
+		local pad = getPad(padIndex)
+		if pad then
+			state.savedPadColors[padIndex] = state.savedPadColors[padIndex] or pad.Color
+			pad.Color = Color3.fromRGB(55, 55, 60)
+		end
+	end
+	showToast("💡 50:50!", "2 jawaban salah sudah dihapus. Pilih dengan teliti!", Color3.fromRGB(190, 150, 255), 2)
+	updateHud()
+end
+
+---------------------------------------------------------------------
+-- LOOP PER FRAME: timer, hitung mundur, posisi pemain
+---------------------------------------------------------------------
+local lastPositionCheck = 0
+RunService.RenderStepped:Connect(function()
+	local t = serverNow()
+	local left = math.max(0, state.endsAt - t)
+
+	if state.mode == "question" then
+		local ratio = math.clamp(left / state.duration, 0, 1)
+		timerFill.Size = UDim2.fromScale(ratio, 1)
+		local color = T.Bad:Lerp(T.Good, ratio)
+		timerFill.BackgroundColor3 = color
+		timerStroke.Color = color
+		local seconds = math.ceil(left)
+		if seconds ~= state.lastSecond then
+			state.lastSecond = seconds
+			timerNumber.Text = tostring(seconds)
+			if seconds <= 5 and seconds > 0 then
+				play("Tick")
+				Ui.pop(timerCircle, 1.25)
+			end
+		end
+
+		if os.clock() - lastPositionCheck > 0.1 then
+			lastPositionCheck = os.clock()
+			local pad = padUnderMe()
+			if pad ~= state.myPad then
+				state.myPad = pad
+				for _, card in ipairs(cards) do
+					card.you.Visible = false
+					card.stroke.Thickness = 0
+				end
+				local card = pad and cardForPad(pad)
+				if card then
+					card.you.Visible = true
+					card.stroke.Thickness = 4
+					Ui.pop(card.frame, 1.1)
+				end
+			end
+			if pad then
+				local option
+				for _, o in ipairs(state.options) do
+					if o.pad == pad then
+						option = o
+					end
+				end
+				local letter = state.kind == "PG" and (option.letter .. ". ") or ""
+				choiceHint.Text = "📍 Jawabanmu: " .. letter .. option.text
+				choiceHint.TextColor3 = state.hiddenPads[pad] and T.Bad or T.Gold
+			elseif left <= 5 then
+				choiceHint.Text = (math.floor(t * 3) % 2 == 0) and "⚠ CEPAT! Berdiri di kotak jawaban!" or ""
+				choiceHint.TextColor3 = T.Bad
+			else
+				choiceHint.Text = "🏃 Lari ke kotak jawaban pilihanmu!"
+				choiceHint.TextColor3 = T.Sub
+			end
+		end
+	elseif state.mode == "explain" then
+		explainFill.Size = UDim2.fromScale(math.clamp(left / state.duration, 0, 1), 1)
+	elseif state.mode == "intermission" then
+		bannerTitle.Text = "⏳ Kuis dimulai dalam " .. math.ceil(left) .. " detik"
+	elseif state.mode == "countdown" then
+		local seconds = math.ceil(left - 1)
+		if seconds ~= state.lastSecond then
+			state.lastSecond = seconds
+			countdownLabel.Text = seconds > 0 and tostring(seconds) or "MULAI! 🚀"
+			Ui.pop(countdownLabel, 1.6)
+			play(seconds > 0 and "Tick" or "Correct")
+		end
+	end
+end)
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(updatePixelScales)
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updatePixelScales)
+end
+updatePixelScales()
+
+-- tampilkan Cara Main saat pertama kali masuk
+helpModal.Visible = true
+updateHud()
+ReadyEvent:FireServer()
+]]></string>
+        </Properties>
+        <Item class="ModuleScript" referent="12">
+          <Properties>
+            <string name="Name">Ui</string>
+            <string name="Source"><![CDATA[-- Ui: fungsi bantu kecil untuk membuat antarmuka dengan kode.
+
+local TweenService = game:GetService("TweenService")
+
+local Ui = {}
+
+Ui.Theme = {
+	Panel = Color3.fromRGB(18, 22, 46),
+	Panel2 = Color3.fromRGB(30, 36, 72),
+	Stroke = Color3.fromRGB(90, 120, 220),
+	Text = Color3.fromRGB(255, 255, 255),
+	Sub = Color3.fromRGB(170, 190, 235),
+	Accent = Color3.fromRGB(70, 160, 255),
+	Good = Color3.fromRGB(60, 220, 120),
+	Bad = Color3.fromRGB(255, 80, 95),
+	Gold = Color3.fromRGB(255, 205, 60),
+	Pink = Color3.fromRGB(255, 80, 200),
+}
+
+-- Membuat Instance dengan properti. props.Parent dipasang paling akhir.
+function Ui.new(className, props)
+	local inst = Instance.new(className)
+	local parent = props.Parent
+	for key, value in pairs(props) do
+		if key ~= "Parent" then
+			inst[key] = value
+		end
+	end
+	inst.Parent = parent
+	return inst
+end
+
+function Ui.corner(parent, radius)
+	return Ui.new("UICorner", { CornerRadius = UDim.new(0, radius or 12), Parent = parent })
+end
+
+function Ui.stroke(parent, color, thickness, transparency)
+	return Ui.new("UIStroke", {
+		Color = color or Ui.Theme.Stroke,
+		Thickness = thickness or 2,
+		Transparency = transparency or 0,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = parent,
+	})
+end
+
+function Ui.maxText(parent, max, min)
+	return Ui.new("UITextSizeConstraint", { MaxTextSize = max, MinTextSize = min or 8, Parent = parent })
+end
+
+function Ui.sizeLimit(parent, minSize, maxSize)
+	return Ui.new("UISizeConstraint", { MinSize = minSize, MaxSize = maxSize, Parent = parent })
+end
+
+function Ui.padding(parent, px)
+	return Ui.new("UIPadding", {
+		PaddingTop = UDim.new(0, px),
+		PaddingBottom = UDim.new(0, px),
+		PaddingLeft = UDim.new(0, px),
+		PaddingRight = UDim.new(0, px),
+		Parent = parent,
+	})
+end
+
+function Ui.panel(props)
+	props.BackgroundColor3 = props.BackgroundColor3 or Ui.Theme.Panel
+	props.BorderSizePixel = 0
+	if props.BackgroundTransparency == nil then
+		props.BackgroundTransparency = 0.08
+	end
+	local frame = Ui.new("Frame", props)
+	Ui.corner(frame, 14)
+	Ui.stroke(frame, Ui.Theme.Stroke, 2, 0.3)
+	return frame
+end
+
+function Ui.text(props)
+	local max = props.MaxTextSize
+	props.MaxTextSize = nil
+	if props.BackgroundTransparency == nil then
+		props.BackgroundTransparency = 1
+	end
+	props.Font = props.Font or Enum.Font.GothamBold
+	props.TextColor3 = props.TextColor3 or Ui.Theme.Text
+	if props.TextScaled == nil then
+		props.TextScaled = true
+	end
+	if props.TextWrapped == nil then
+		props.TextWrapped = true
+	end
+	props.Text = props.Text or ""
+	local label = Ui.new("TextLabel", props)
+	if max then
+		Ui.maxText(label, max)
+	end
+	return label
+end
+
+function Ui.button(props, onClick)
+	local max = props.MaxTextSize or 22
+	props.MaxTextSize = nil
+	props.BackgroundColor3 = props.BackgroundColor3 or Ui.Theme.Accent
+	props.BorderSizePixel = 0
+	props.Font = props.Font or Enum.Font.GothamBold
+	props.TextColor3 = props.TextColor3 or Ui.Theme.Text
+	props.TextScaled = true
+	props.TextWrapped = true
+	props.AutoButtonColor = true
+	local button = Ui.new("TextButton", props)
+	Ui.corner(button, 10)
+	Ui.maxText(button, max)
+	Ui.new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6),
+		PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), Parent = button })
+	local scale = Ui.new("UIScale", { Parent = button })
+	button.MouseEnter:Connect(function()
+		Ui.tween(scale, 0.12, { Scale = 1.05 })
+	end)
+	button.MouseLeave:Connect(function()
+		Ui.tween(scale, 0.12, { Scale = 1 })
+	end)
+	if onClick then
+		button.Activated:Connect(onClick)
+	end
+	return button
+end
+
+function Ui.tween(inst, time, goal, style, direction)
+	local tween = TweenService:Create(inst, TweenInfo.new(time, style or Enum.EasingStyle.Quad,
+		direction or Enum.EasingDirection.Out), goal)
+	tween:Play()
+	return tween
+end
+
+-- Animasi "muncul" (membesar sedikit lalu normal)
+function Ui.pop(inst, from)
+	local scale = inst:FindFirstChild("PopScale") or Ui.new("UIScale", { Name = "PopScale", Parent = inst })
+	scale.Scale = from or 0.6
+	Ui.tween(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+end
+
+function Ui.clear(container)
+	for _, child in ipairs(container:GetChildren()) do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+end
+
+return Ui
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="13">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="NeedsPivotMigration">false</bool>
+      <bool name="StreamingEnabled">false</bool>
+    </Properties>
+    <Item class="Part" referent="14">
+      <Properties>
+        <string name="Name">PetunjukAwal</string>
+        <bool name="Anchored">true</bool>
+        <Color3uint8 name="Color3uint8">1711936</Color3uint8>
+        <Vector3 name="Position">
+          <X>0</X>
+          <Y>8</Y>
+          <Z>0</Z>
+        </Vector3>
+        <Vector3 name="size">
+          <X>24</X>
+          <Y>12</Y>
+          <Z>1</Z>
+        </Vector3>
+      </Properties>
+      <Item class="SurfaceGui" referent="15">
+        <Properties>
+          <string name="Name">Gui</string>
+          <token name="Face">2</token>
+          <float name="LightInfluence">0</float>
+        </Properties>
+        <Item class="TextLabel" referent="16">
+          <Properties>
+            <string name="Name">Teks</string>
+            <float name="BackgroundTransparency">1</float>
+            <Font name="FontFace">
+              <Family>
+                <url>rbxasset://fonts/families/FredokaOne.json</url>
+              </Family>
+              <Weight>400</Weight>
+              <Style>Normal</Style>
+            </Font>
+            <UDim2 name="Size">
+              <XS>1</XS>
+              <XO>0</XO>
+              <YS>1</YS>
+              <YO>0</YO>
+            </UDim2>
+            <string name="Text">NET QUEST
+Tekan tombol PLAY (F5) untuk memulai.
+Arena kuis dibangun otomatis saat game berjalan.</string>
+            <Color3 name="TextColor3">
+              <R>1</R>
+              <G>1</G>
+              <B>1</B>
+            </Color3>
+            <bool name="TextScaled">true</bool>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

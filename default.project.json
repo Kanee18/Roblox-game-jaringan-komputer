@@ -1,0 +1,55 @@
+{
+  "name": "NetQuest-KuisJaringanKomputer",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "QuizShared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "QuizServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "QuizClient": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": false
+      },
+      "PetunjukAwal": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [24, 12, 1],
+          "Position": [0, 8, 0],
+          "Color": [0.1, 0.12, 0.25]
+        },
+        "Gui": {
+          "$className": "SurfaceGui",
+          "$properties": {
+            "Face": "Back",
+            "LightInfluence": 0
+          },
+          "Teks": {
+            "$className": "TextLabel",
+            "$properties": {
+              "Size": { "UDim2": [[1, 0], [1, 0]] },
+              "BackgroundTransparency": 1,
+              "TextScaled": true,
+              "TextColor3": [1, 1, 1],
+              "Font": "FredokaOne",
+              "Text": "NET QUEST\nTekan tombol PLAY (F5) untuk memulai.\nArena kuis dibangun otomatis saat game berjalan."
+            }
+          }
+        }
+      }
+    }
+  }
+}
