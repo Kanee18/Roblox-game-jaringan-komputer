@@ -1,5 +1,6 @@
 --[[
-	PlayerData: menyimpan XP, jumlah ronde, dan statistik jawaban siswa (DataStore).
+	PlayerData: menyimpan data siswa (nama, absen, kelas), Poin Rank (xp), pet yang dipakai,
+	jumlah ronde, dan statistik jawaban (DataStore).
 	Jika DataStore tidak tersedia (misal API Services belum diaktifkan), data hanya
 	disimpan selama sesi berjalan dan game tetap bisa dimainkan.
 ]]
@@ -28,7 +29,7 @@ if Config.UseDataStore then
 end
 
 local function defaultData()
-	return { xp = 0, rounds = 0, correct = 0, answered = 0, wins = 0 }
+	return { xp = 0, rounds = 0, correct = 0, answered = 0, wins = 0, pet = "slime", profile = nil }
 end
 
 local function keyFor(player)
@@ -79,6 +80,21 @@ end
 function PlayerData.SaveAll()
 	for player in pairs(cache) do
 		PlayerData.Save(player)
+	end
+end
+
+function PlayerData.SetProfile(player, profile)
+	local data = cache[player]
+	if data then
+		data.profile = profile
+		task.spawn(PlayerData.Save, player)
+	end
+end
+
+function PlayerData.SetPet(player, petId)
+	local data = cache[player]
+	if data then
+		data.pet = petId
 	end
 end
 

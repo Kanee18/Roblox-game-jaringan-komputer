@@ -12,6 +12,11 @@
 	topik : konsep / topologi / perangkat / internet / koneksi / keamanan
 	lv    : tingkat kesulitan 1 (mudah), 2 (sedang), 3 (sulit). Soal diurutkan dari mudah ke sulit.
 	e     : penjelasan singkat yang muncul setelah jawaban diungkap (penting untuk belajar!)
+
+	3) Isian / ketik jawaban (dipakai mode "Pecahkan Sandi"), ada di Questions.Isian di bawah:
+	   { topik = "perangkat", lv = 1, q = "Perangkat pemilih rute data disebut ...", jawab = { "Router" }, e = "Penjelasan." },
+	   -> jawab boleh berisi beberapa jawaban yang diterima. Huruf besar/kecil & spasi diabaikan.
+	4) Kata untuk teka-teki Caesar Cipher ada di Questions.CipherWords (huruf A-Z saja).
 ]]
 
 local Questions = {}
@@ -229,6 +234,58 @@ Questions.List = {
 		e = "WiFi publik rawan disadap. Hindari login akun penting atau transaksi keuangan di WiFi publik." },
 	{ topik = "keamanan", lv = 3, bs = true, q = "Menggunakan satu password yang sama untuk semua akun adalah kebiasaan yang aman.", jawab = false,
 		e = "Salah! Jika satu akun bocor, semua akun lain ikut terancam. Gunakan password berbeda di setiap akun." },
+
+	---------------------------------------------------------------
+	-- SOAL TAMBAHAN (campuran topik)
+	---------------------------------------------------------------
+	{ topik = "konsep", lv = 1, q = "Komputer yang MEMINTA layanan dari server disebut...",
+		c = { "Client", "Router", "Hub", "Modem" },
+		e = "Client adalah komputer yang meminta layanan, sedangkan server adalah komputer yang melayani." },
+	{ topik = "konsep", lv = 1, bs = true, q = "Jaringan komputer hanya bisa dibuat menggunakan kabel.", jawab = false,
+		e = "Salah! Jaringan juga bisa dibuat tanpa kabel (nirkabel), misalnya WiFi dan Bluetooth." },
+	{ topik = "topologi", lv = 1, q = "Topologi yang paling banyak dipakai di lab komputer sekolah adalah...",
+		c = { "Star", "Ring", "Bus", "Mesh" },
+		e = "Lab komputer biasanya memakai topologi Star: semua komputer terhubung ke satu switch." },
+	{ topik = "topologi", lv = 3, bs = true, q = "Topologi Ring membutuhkan terminator di kedua ujung kabelnya.", jawab = false,
+		e = "Salah! Terminator dipakai pada topologi BUS. Topologi Ring berbentuk lingkaran sehingga tidak punya ujung." },
+	{ topik = "perangkat", lv = 1, q = "Fungsi utama MODEM adalah...",
+		c = { "Mengubah sinyal digital menjadi analog dan sebaliknya", "Mengeluarkan suara", "Mencetak dokumen", "Menyimpan file" },
+		e = "Modem (Modulator-Demodulator) mengubah sinyal digital <-> analog agar komputer bisa terhubung ke internet." },
+	{ topik = "perangkat", lv = 3, q = "Di dalam satu kabel UTP terdapat berapa helai kabel kecil?",
+		c = { "8", "4", "2", "16" },
+		e = "Kabel UTP berisi 8 helai kabel kecil (4 pasang) yang dipilin dan disusun sesuai standar warna." },
+	{ topik = "internet", lv = 1, q = "Berikut ini yang merupakan contoh BROWSER adalah...",
+		c = { "Google Chrome", "Microsoft Word", "Paint", "Kalkulator" },
+		e = "Contoh browser: Google Chrome, Mozilla Firefox, Microsoft Edge, Safari." },
+	{ topik = "internet", lv = 1, q = "Kegiatan menyalin file DARI internet KE perangkat kita disebut...",
+		c = { "Download", "Upload", "Login", "Logout" },
+		e = "Download = mengunduh (internet -> perangkat). Upload = mengunggah (perangkat -> internet)." },
+	{ topik = "internet", lv = 2, q = "Mengirim foto dari HP ke media sosial atau cloud disebut...",
+		c = { "Upload", "Download", "Restart", "Format" },
+		e = "Upload (mengunggah) adalah mengirim file dari perangkat kita ke internet." },
+	{ topik = "internet", lv = 2, bs = true, q = "DNS menerjemahkan nama domain menjadi IP Address agar komputer bisa menemukan server tujuan.", jawab = true,
+		e = "Benar! Manusia mudah mengingat nama domain, komputer membutuhkan IP Address. DNS menjembatani keduanya." },
+	{ topik = "koneksi", lv = 1, q = "Jaringan seluler generasi ke-5 yang sangat cepat disebut...",
+		c = { "5G", "5W", "G5X", "Bluetooth 5" },
+		e = "5G adalah generasi kelima jaringan seluler, lebih cepat daripada 4G." },
+	{ topik = "koneksi", lv = 2, bs = true, q = "Bluetooth dapat menjangkau jarak hingga ratusan kilometer.", jawab = false,
+		e = "Salah! Bluetooth hanya untuk jarak dekat, umumnya sekitar 10 meter." },
+	{ topik = "keamanan", lv = 1, q = "Program yang berfungsi melindungi komputer dari virus adalah...",
+		c = { "Antivirus", "Paint", "Browser", "Spreadsheet" },
+		e = "Antivirus mendeteksi dan menghapus malware. Jangan lupa selalu memperbaruinya." },
+	{ topik = "keamanan", lv = 2, q = "Malware yang mengunci file lalu meminta uang tebusan disebut...",
+		c = { "Ransomware", "Freeware", "Hardware", "Firmware" },
+		e = "Ransomware mengunci (mengenkripsi) file korban lalu meminta tebusan. Rajin backup data untuk berjaga-jaga." },
+	{ topik = "keamanan", lv = 1, bs = true, q = "Sebelum mengklik link dari pesan yang tidak dikenal, kita sebaiknya memeriksa kebenarannya dulu.", jawab = true,
+		e = "Benar! Link dari pesan tak dikenal bisa jadi phishing. Periksa alamatnya dan jangan asal klik." },
+	{ topik = "keamanan", lv = 2, q = "FIREWALL pada jaringan berfungsi untuk...",
+		c = { "Menyaring dan memblokir lalu lintas data berbahaya", "Mempercepat download", "Mendinginkan komputer", "Mencetak dokumen" },
+		e = "Firewall seperti satpam jaringan: memeriksa data yang keluar-masuk dan memblokir yang berbahaya." },
+	{ topik = "keamanan", lv = 3, q = "Contoh tindakan menjaga JEJAK DIGITAL yang baik adalah...",
+		c = { "Berpikir dulu sebelum mengunggah sesuatu", "Membagikan alamat rumah di media sosial", "Mengunggah foto KTP", "Menyebarkan berita yang belum jelas" },
+		e = "Apa yang diunggah ke internet sulit dihapus. Pikirkan dulu sebelum mengunggah atau membagikan sesuatu." },
+	{ topik = "konsep", lv = 3, bs = true, q = "Pada jaringan Peer-to-Peer, setiap komputer bisa menjadi client sekaligus server.", jawab = true,
+		e = "Benar! Pada Peer-to-Peer semua komputer setara, sehingga bisa saling meminta dan memberi layanan." },
 }
 
 local function shuffle(list)
@@ -330,6 +387,177 @@ function Questions.CountByTopic()
 		counts[q.topik] = (counts[q.topik] or 0) + 1
 	end
 	return counts
+end
+
+---------------------------------------------------------------------
+-- SOAL ISIAN (mode Pecahkan Sandi). Jawaban pertama = jawaban yang ditampilkan.
+---------------------------------------------------------------------
+Questions.Isian = {
+	{ topik = "konsep", lv = 1, q = "LAN adalah singkatan dari Local Area ...", jawab = { "Network" },
+		e = "LAN = Local Area Network, jaringan dalam satu ruangan/gedung." },
+	{ topik = "konsep", lv = 1, q = "Komputer pusat yang MELAYANI komputer lain disebut ...", jawab = { "Server" },
+		e = "Server melayani permintaan dari komputer client." },
+	{ topik = "konsep", lv = 2, q = "Jaringan yang mencakup satu kota disingkat ... (3 huruf)", jawab = { "MAN" },
+		e = "MAN = Metropolitan Area Network." },
+	{ topik = "konsep", lv = 2, q = "Jaringan pribadi jarak sangat dekat (misal HP ke earphone) disingkat ... (3 huruf)", jawab = { "PAN" },
+		e = "PAN = Personal Area Network, jangkauannya sekitar 10 meter." },
+	{ topik = "topologi", lv = 1, q = "Topologi yang semua komputernya terhubung ke satu switch pusat disebut topologi ...", jawab = { "Star", "Bintang" },
+		e = "Topologi Star (bintang) memiliki satu titik pusat berupa switch/hub." },
+	{ topik = "topologi", lv = 1, q = "Topologi berbentuk lingkaran disebut topologi ...", jawab = { "Ring", "Cincin" },
+		e = "Pada topologi Ring, data berputar dari satu komputer ke komputer berikutnya." },
+	{ topik = "topologi", lv = 3, q = "Berapa kabel yang dibutuhkan topologi Mesh untuk 3 komputer? (ketik angkanya)", jawab = { "3", "tiga" },
+		e = "n x (n - 1) / 2 = 3 x 2 / 2 = 3 kabel." },
+	{ topik = "topologi", lv = 2, q = "Kabel utama pada topologi Bus disebut ...", jawab = { "Backbone" },
+		e = "Backbone adalah kabel utama tempat semua komputer pada topologi Bus terhubung." },
+	{ topik = "perangkat", lv = 1, q = "Perangkat yang menghubungkan jaringan berbeda dan memilih rute data disebut ...", jawab = { "Router" },
+		e = "Router menghubungkan jaringan berbeda dan menentukan jalur terbaik untuk data." },
+	{ topik = "perangkat", lv = 2, q = "Konektor kabel UTP bernama RJ-... (ketik angkanya)", jawab = { "45" },
+		e = "Kabel UTP memakai konektor RJ-45." },
+	{ topik = "perangkat", lv = 2, q = "Alamat fisik unik pada kartu jaringan disebut ... Address", jawab = { "MAC" },
+		e = "MAC Address adalah alamat fisik yang tertanam di setiap NIC." },
+	{ topik = "perangkat", lv = 2, q = "Perangkat yang lebih pintar dari hub karena mengirim data hanya ke komputer tujuan disebut ...", jawab = { "Switch" },
+		e = "Switch mengirim data hanya ke port tujuan, sedangkan hub ke semua port." },
+	{ topik = "internet", lv = 1, q = "Sistem penerjemah nama domain menjadi IP Address disingkat ... (3 huruf)", jawab = { "DNS" },
+		e = "DNS = Domain Name System." },
+	{ topik = "internet", lv = 2, q = "Jaringan cikal bakal internet (tahun 1969) bernama ...", jawab = { "ARPANET" },
+		e = "ARPANET dibuat oleh Departemen Pertahanan Amerika Serikat." },
+	{ topik = "internet", lv = 1, q = "Perusahaan penyedia layanan internet disingkat ... (3 huruf)", jawab = { "ISP" },
+		e = "ISP = Internet Service Provider." },
+	{ topik = "internet", lv = 2, q = "Potongan-potongan kecil data yang dikirim lewat internet disebut ...", jawab = { "Paket", "Packet", "Paket data" },
+		e = "Data dipecah menjadi paket, dikirim, lalu disusun kembali di tujuan." },
+	{ topik = "internet", lv = 2, q = "Versi AMAN dari protokol HTTP adalah ...", jawab = { "HTTPS" },
+		e = "HTTPS = HTTP Secure, datanya dienkripsi dan ditandai ikon gembok." },
+	{ topik = "koneksi", lv = 2, q = "Nama jaringan WiFi yang muncul di HP disebut ... (4 huruf)", jawab = { "SSID" },
+		e = "SSID = Service Set Identifier, yaitu nama jaringan WiFi." },
+	{ topik = "koneksi", lv = 2, q = "Kabel yang mengirim data menggunakan CAHAYA disebut fiber ...", jawab = { "Optic", "Optik" },
+		e = "Fiber optic (serat optik) sangat cepat dan bisa menjangkau jarak jauh." },
+	{ topik = "koneksi", lv = 1, q = "Fitur HP untuk membagikan internet ke perangkat lain disebut ...", jawab = { "Hotspot", "Tethering" },
+		e = "Dengan hotspot/tethering, HP berfungsi seperti router WiFi kecil." },
+	{ topik = "keamanan", lv = 1, q = "Proses mengubah data menjadi kode acak agar tidak terbaca disebut ...", jawab = { "Enkripsi", "Encryption" },
+		e = "Enkripsi melindungi data. Untuk membacanya kembali diperlukan kunci." },
+	{ topik = "keamanan", lv = 2, q = "Proses mengembalikan kode acak menjadi data asli disebut ...", jawab = { "Dekripsi", "Decryption" },
+		e = "Dekripsi adalah kebalikan dari enkripsi." },
+	{ topik = "keamanan", lv = 1, q = "Penipuan dengan link palsu untuk mencuri data disebut ...", jawab = { "Phishing" },
+		e = "Phishing memancing korban agar memberikan data pribadi." },
+	{ topik = "keamanan", lv = 2, q = "Kode rahasia sekali pakai yang dikirim lewat SMS disingkat ... (3 huruf)", jawab = { "OTP" },
+		e = "OTP = One Time Password. Jangan pernah berikan kepada siapa pun!" },
+}
+
+-- Kata-kata untuk teka-teki Caesar Cipher (hanya huruf A-Z)
+Questions.CipherWords = {
+	{ kata = "ROUTER", topik = "perangkat", petunjuk = "perangkat pemilih rute data" },
+	{ kata = "MODEM", topik = "perangkat", petunjuk = "pengubah sinyal digital <-> analog" },
+	{ kata = "SWITCH", topik = "perangkat", petunjuk = "pusat jaringan yang mengirim data ke tujuan" },
+	{ kata = "HUB", topik = "perangkat", petunjuk = "perangkat yang meneruskan data ke semua port" },
+	{ kata = "WIFI", topik = "koneksi", petunjuk = "koneksi nirkabel dengan gelombang radio" },
+	{ kata = "KABEL", topik = "koneksi", petunjuk = "media jaringan berwujud fisik" },
+	{ kata = "BLUETOOTH", topik = "koneksi", petunjuk = "nirkabel jarak dekat" },
+	{ kata = "SERVER", topik = "konsep", petunjuk = "komputer yang melayani" },
+	{ kata = "CLIENT", topik = "konsep", petunjuk = "komputer yang meminta layanan" },
+	{ kata = "WAN", topik = "konsep", petunjuk = "jaringan antarnegara" },
+	{ kata = "PAKET", topik = "internet", petunjuk = "potongan kecil data" },
+	{ kata = "BROWSER", topik = "internet", petunjuk = "aplikasi untuk membuka web" },
+	{ kata = "DOMAIN", topik = "internet", petunjuk = "nama alamat website" },
+	{ kata = "MESH", topik = "topologi", petunjuk = "topologi yang semua komputernya saling terhubung" },
+	{ kata = "RING", topik = "topologi", petunjuk = "topologi berbentuk cincin" },
+	{ kata = "TREE", topik = "topologi", petunjuk = "topologi bertingkat seperti pohon" },
+	{ kata = "VIRUS", topik = "keamanan", petunjuk = "program jahat yang menular" },
+	{ kata = "CLOUD", topik = "keamanan", petunjuk = "penyimpanan data di internet" },
+	{ kata = "SANDI", topik = "keamanan", petunjuk = "nama lain password" },
+	{ kata = "FIREWALL", topik = "keamanan", petunjuk = "penyaring lalu lintas data berbahaya" },
+}
+
+-- Menyamakan jawaban ketikan: huruf kecil, tanpa spasi & tanda baca
+function Questions.Normalize(text)
+	return (string.gsub(string.lower(tostring(text or "")), "[^%w]", ""))
+end
+
+-- Enkripsi Caesar: geser setiap huruf A-Z sebanyak shift
+function Questions.Caesar(word, shift)
+	return (string.gsub(string.upper(word), "%a", function(ch)
+		local code = string.byte(ch) - 65
+		return string.char((code + shift) % 26 + 65)
+	end))
+end
+
+local function sortByLevel(list)
+	local rank = {}
+	for i, q in ipairs(list) do
+		rank[q] = (q.lv or 1) * 1000 + i
+	end
+	table.sort(list, function(a, b)
+		return rank[a] < rank[b]
+	end)
+	return list
+end
+
+-- Soal untuk mode Pecahkan Sandi: campuran soal isian & teka-teki Caesar Cipher.
+-- Hasil sudah siap pakai: { text, kind = "ISIAN", answers, display, explanation, topic, level }
+function Questions.PickIsian(topicId, count)
+	local isianPool, cipherPool = {}, {}
+	for _, q in ipairs(Questions.Isian) do
+		if topicId == "campuran" or q.topik == topicId then
+			table.insert(isianPool, q)
+		end
+	end
+	for _, w in ipairs(Questions.CipherWords) do
+		if topicId == "campuran" or w.topik == topicId then
+			table.insert(cipherPool, w)
+		end
+	end
+	shuffle(isianPool)
+	shuffle(cipherPool)
+
+	local cipherCount = math.min(#cipherPool, math.max(1, math.floor(count * 0.4)))
+	local picked = {}
+	for i = 1, cipherCount do
+		local w = cipherPool[i]
+		local shift = math.random(1, 3)
+		local encrypted = Questions.Caesar(w.kata, shift)
+		table.insert(picked, {
+			lv = shift == 1 and 2 or 3,
+			topic = w.topik,
+			kind = "ISIAN",
+			isCipher = true,
+			text = "🔐 Pecahkan sandi Caesar ini!  Setiap huruf sudah digeser MAJU " .. shift .. " huruf.\n"
+				.. encrypted .. "\nPetunjuk: " .. w.petunjuk,
+			cipherText = encrypted,
+			answers = { Questions.Normalize(w.kata) },
+			display = w.kata,
+			explanation = "Geser setiap huruf MUNDUR " .. shift .. ": " .. encrypted .. " -> " .. w.kata .. ". Contoh: "
+				.. string.sub(encrypted, 1, 1) .. " -> " .. string.sub(w.kata, 1, 1) .. ".",
+		})
+	end
+	for i = 1, math.min(#isianPool, count - #picked) do
+		local q = isianPool[i]
+		local answers = {}
+		for _, a in ipairs(q.jawab) do
+			table.insert(answers, Questions.Normalize(a))
+		end
+		table.insert(picked, {
+			lv = q.lv or 1,
+			topic = q.topik,
+			kind = "ISIAN",
+			text = q.q,
+			answers = answers,
+			display = q.jawab[1],
+			explanation = q.e or "",
+		})
+	end
+	return sortByLevel(picked)
+end
+
+function Questions.CheckIsian(prepared, text)
+	local given = Questions.Normalize(text)
+	if given == "" then
+		return false
+	end
+	for _, answer in ipairs(prepared.answers) do
+		if given == answer then
+			return true
+		end
+	end
+	return false
 end
 
 return Questions

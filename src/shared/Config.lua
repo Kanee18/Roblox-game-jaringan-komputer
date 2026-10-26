@@ -7,16 +7,58 @@
 local Config = {}
 
 ---------------------------------------------------------------------
+-- PENDAFTARAN SISWA (muncul saat siswa pertama kali masuk)
+---------------------------------------------------------------------
+Config.AskClass = true -- true = siswa juga mengisi kelas (contoh: 7A). false = hanya nama & absen
+Config.MaxAbsen = 50 -- nomor absen maksimal
+Config.MinNameLength = 3
+Config.MaxNameLength = 30
+
+---------------------------------------------------------------------
+-- MODE PERMAINAN
+-- Guru bisa memilih mode di Panel Guru. "giliran" = mode berganti tiap ronde.
+---------------------------------------------------------------------
+Config.Modes = {
+	{ id = "giliran", name = "Bergiliran (semua mode)", icon = "🔄", color = Color3.fromRGB(180, 120, 255),
+		desc = "Setiap ronde memakai mode yang berbeda." },
+	{ id = "kotak", name = "Lari & Pilih", icon = "🏃", color = Color3.fromRGB(70, 160, 255),
+		desc = "Lari dan BERDIRI di kotak jawaban yang benar. Kotak yang salah akan JATUH!" },
+	{ id = "kilat", name = "Kuis Kilat", icon = "⚡", color = Color3.fromRGB(255, 200, 50),
+		desc = "Tekan tombol jawaban secepat mungkin! Makin cepat, makin besar poinnya." },
+	{ id = "firewall", name = "Lintasan Firewall", icon = "🧱", color = Color3.fromRGB(255, 110, 70),
+		desc = "Balapan di lintasan langit! Pilih PINTU jawaban yang benar. Pintu salah = jatuh!" },
+	{ id = "sandi", name = "Pecahkan Sandi", icon = "🔐", color = Color3.fromRGB(90, 220, 140),
+		desc = "KETIK jawaban yang benar dan pecahkan kode rahasia Caesar Cipher!" },
+}
+Config.DefaultMode = "giliran"
+Config.RotationOrder = { "kotak", "kilat", "firewall", "sandi" }
+
+function Config.GetMode(id)
+	for _, mode in ipairs(Config.Modes) do
+		if mode.id == id then
+			return mode
+		end
+	end
+	return Config.Modes[1]
+end
+
+---------------------------------------------------------------------
 -- PENGATURAN KUIS
 ---------------------------------------------------------------------
-Config.QuestionsPerRound = 10 -- jumlah soal tiap ronde (pilihan guru: 5/10/15/20)
-Config.QuestionTime = 20 -- detik untuk soal pilihan ganda
-Config.TrueFalseTime = 12 -- detik untuk soal Benar/Salah
-Config.RevealTime = 3 -- detik animasi jawaban benar (kotak salah jatuh)
+Config.QuestionsPerRound = 10 -- jumlah soal tiap ronde (Lintasan Firewall selalu FirewallGates soal)
+Config.QuestionTime = 20 -- detik soal pilihan ganda (mode Lari & Pilih)
+Config.TrueFalseTime = 12 -- detik soal Benar/Salah (mode Lari & Pilih)
+Config.KilatTime = 10 -- detik per soal mode Kuis Kilat
+Config.SandiTime = 35 -- detik per soal mode Pecahkan Sandi
+Config.SandiAttempts = 3 -- kesempatan mengetik per soal
+Config.FirewallGates = 8 -- jumlah gerbang (soal) di Lintasan Firewall
+Config.FirewallTime = 240 -- batas waktu Lintasan Firewall (detik)
+Config.RevealTime = 3 -- detik animasi jawaban benar
 Config.ExplanationTime = 7 -- detik menampilkan penjelasan materi
 Config.IntermissionTime = 30 -- detik jeda sebelum ronde dimulai
+Config.ModeIntroTime = 6 -- detik penjelasan cara main mode sebelum ronde
 Config.RoundEndTime = 15 -- detik menampilkan hasil akhir ronde
-Config.MinPlayers = 1 -- minimal pemain agar ronde otomatis dimulai
+Config.MinPlayers = 1 -- minimal siswa terdaftar agar ronde otomatis dimulai
 Config.AutoStart = true -- true = ronde mulai otomatis; false = tunggu guru menekan "Mulai"
 
 ---------------------------------------------------------------------
@@ -37,22 +79,26 @@ Config.StudioEveryoneTeacher = true -- saat dites di Roblox Studio, semua pemain
 ---------------------------------------------------------------------
 Config.BasePoints = 100 -- poin jawaban benar
 Config.MaxSpeedBonus = 50 -- bonus maksimal jika menjawab cepat
+Config.KilatSpeedBonus = 100 -- bonus kecepatan maksimal di Kuis Kilat
 Config.StreakBonus = 10 -- bonus per jawaban benar berturut-turut
 Config.MaxStreakBonus = 50 -- batas bonus streak
 Config.BossMultiplier = 2 -- soal terakhir (SOAL BOS) poinnya dikali angka ini
-Config.HintEveryStreak = 3 -- tiap benar 3x berturut-turut dapat 1 bantuan 50:50
+Config.SandiRetryPenalty = 30 -- poin berkurang tiap salah ketik sebelum benar
+Config.FinishBonus = { 300, 200, 100 } -- bonus juara 1/2/3 yang mencapai finish Lintasan Firewall
+Config.FinishAllBonus = 50 -- bonus untuk semua yang berhasil mencapai finish
+Config.HintEveryStreak = 3 -- tiap benar 3x berturut-turut dapat 1 bantuan
 Config.MaxHints = 2 -- maksimal bantuan yang bisa disimpan
 Config.StartingHints = 1 -- bantuan yang dimiliki saat ronde dimulai
 
 ---------------------------------------------------------------------
--- PENYIMPANAN (DataStore) untuk XP & Gelar
+-- PENYIMPANAN (DataStore) untuk data siswa, Poin Rank & Pet
 -- Agar berfungsi: Game Settings > Security > Enable Studio Access to API Services
 -- dan game sudah dipublikasikan. Jika gagal, game tetap berjalan tanpa simpan.
 ---------------------------------------------------------------------
 Config.UseDataStore = true
 Config.DataStoreName = "NetQuest_KuisJaringan_v1"
 
--- Gelar berdasarkan total XP (XP = total poin dari semua ronde)
+-- Gelar berdasarkan total POIN RANK (Poin Rank = total poin dari semua ronde)
 Config.Ranks = {
 	{ xp = 0, name = "Kabel Pemula", color = Color3.fromRGB(200, 200, 200) },
 	{ xp = 500, name = "Hub Junior", color = Color3.fromRGB(120, 220, 255) },
@@ -61,6 +107,7 @@ Config.Ranks = {
 	{ xp = 6000, name = "Server Master", color = Color3.fromRGB(255, 140, 70) },
 	{ xp = 10000, name = "Legenda Internet", color = Color3.fromRGB(255, 90, 220) },
 }
+-- Daftar pet & syarat Poin Rank-nya ada di QuizShared > PetCatalog
 
 ---------------------------------------------------------------------
 -- TOPIK MATERI (Informatika Kelas 7 - Jaringan Komputer & Internet)
@@ -85,7 +132,7 @@ function Config.GetTopic(id)
 end
 
 ---------------------------------------------------------------------
--- WARNA KOTAK JAWABAN (A, B, C, D)
+-- WARNA KOTAK / PINTU JAWABAN (A, B, C, D)
 ---------------------------------------------------------------------
 Config.PadColors = {
 	Color3.fromRGB(235, 64, 82), -- A merah
@@ -114,7 +161,7 @@ Config.MusicId = "" -- isi dengan ID musik latar dari Toolbox jika ingin ada mus
 ---------------------------------------------------------------------
 -- TAMPILAN DUNIA
 ---------------------------------------------------------------------
-Config.ClockTime = 17.4 -- waktu langit (0-24). 17-18 = senja, lampu neon terlihat keren
+Config.ClockTime = 14.5 -- waktu langit (0-24). 14 = siang cerah, 17.5 = senja
 Config.GameTitle = "NET QUEST"
 Config.GameSubtitle = "Kuis Jaringan Komputer & Internet • Informatika Kelas 7"
 
