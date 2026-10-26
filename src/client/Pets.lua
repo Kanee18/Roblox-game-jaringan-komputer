@@ -88,7 +88,7 @@ RunService.RenderStepped:Connect(function(dt)
 			if info.flying then
 				bob = 1.6 + math.sin(t * 2.5 + entry.seed) * 0.5
 			else
-				bob = -2.1 + (moving and math.abs(math.sin(t * 9 + entry.seed)) * 0.6 or 0)
+				bob = -1.95 + (moving and math.abs(math.sin(t * 9 + entry.seed)) * 0.6 or 0)
 			end
 			local target = base * CFrame.new(3, bob, 3)
 			entry.cframe = entry.cframe:Lerp(target, math.clamp(dt * 7, 0, 1))
@@ -96,6 +96,7 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 end)
+
 
 ---------------------------------------------------------------------
 -- PRATINJAU PET (ViewportFrame)
@@ -125,62 +126,109 @@ end
 -- MENU KOLEKSI & JENDELA PET BARU
 ---------------------------------------------------------------------
 function Pets.Init(ctx)
-	local Ui, T = ctx.Ui, ctx.Theme
+	local Ui = ctx.Ui
+	local T, F = Ui.Theme, Ui.Font
+	local LOCKED_TINT = Color3.fromRGB(44, 48, 78)
 
-	-- MENU KOLEKSI
-	local menu = ctx.makeModal("ModalPet", "🐾 KOLEKSI PET", 0.84, 0.84)
-	local info = Ui.text({ Position = UDim2.new(0, 16, 0.1, 0), Size = UDim2.new(1, -32, 0.06, 0), TextColor3 = T.Sub,
-		Font = Enum.Font.GothamMedium, MaxTextSize = 18, ZIndex = 5, Parent = menu })
-	local grid = Ui.new("ScrollingFrame", { Position = UDim2.new(0.02, 0, 0.17, 0), Size = UDim2.new(0.96, 0, 0.8, 0),
-		BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 6, CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = menu })
-	Ui.new("UIGridLayout", { CellSize = UDim2.new(0.32, 0, 0, 210), CellPadding = UDim2.new(0.013, 0, 0, 10),
-		SortOrder = Enum.SortOrder.LayoutOrder, Parent = grid })
+	-- MENU KOLEKSI (920 x 580; area konten 516 tinggi)
+	local menu, _, menuContent = ctx.makeModal("ModalPet", "Koleksi Pet", 920, 580)
+
+	local strip = Ui.new("Frame", { Name = "Ringkasan", Position = UDim2.fromOffset(24, 16), Size = UDim2.new(1, -48, 0, 72),
+		BackgroundColor3 = T.Paper2, BorderSizePixel = 0, ZIndex = 5, Parent = menuContent })
+	Ui.corner(strip, 16)
+	Ui.text({ Position = UDim2.fromOffset(20, 12), Size = UDim2.fromOffset(200, 16), Text = "POIN RANK KAMU", Font = F.Black, TextSize = 13,
+		TextColor3 = T.InkSoft, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5, Parent = strip })
+	local xpLabel = Ui.text({ Position = UDim2.fromOffset(20, 28), Size = UDim2.fromOffset(200, 34), Text = "0", Font = F.Display, TextSize = 30,
+		TextColor3 = T.Ink, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5, Parent = strip })
+	local nextLabel = Ui.text({ Position = UDim2.fromOffset(240, 14), Size = UDim2.new(1, -460, 0, 18), Text = "", Font = F.Bold, TextSize = 15,
+		TextColor3 = T.Ink, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 5, Parent = strip })
+	local nextBack, nextFill = Ui.bar({ Position = UDim2.fromOffset(240, 42), Size = UDim2.new(1, -460, 0, 10), ZIndex = 5 }, T.Pink, T.Line)
+	nextBack.Parent = strip
+	nextFill.ZIndex = 5
+	local remainLabel = Ui.text({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -20, 0.5, 0), Size = UDim2.fromOffset(190, 40),
+		Text = "", Font = F.Black, TextSize = 16, TextColor3 = T.Pink, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5, Parent = strip })
+
+	local grid = Ui.new("ScrollingFrame", { Position = UDim2.fromOffset(24, 104), Size = UDim2.new(1, -48, 1, -116), BackgroundTransparency = 1,
+		BorderSizePixel = 0, ScrollBarThickness = 5, ScrollBarImageColor3 = T.InkSoft, CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 5, Parent = menuContent })
+	Ui.new("UIGridLayout", { CellSize = UDim2.fromOffset(164, 192), CellPadding = UDim2.fromOffset(10, 12), SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = grid })
 
 	local cards = {}
 	for order, pet in ipairs(PetCatalog.List) do
 		local rarityColor = PetCatalog.Rarities[pet.rarity]
-		local card = Ui.new("Frame", { LayoutOrder = order, BackgroundColor3 = T.Panel2, BorderSizePixel = 0, ZIndex = 5, Parent = grid })
-		Ui.corner(card, 12)
-		local stroke = Ui.stroke(card, rarityColor, 2)
-		local view = viewport(card, pet.id, { Position = UDim2.new(0, 0, 0, 4), Size = UDim2.new(1, 0, 0, 110), ZIndex = 5 })
-		local name = Ui.text({ Position = UDim2.new(0, 6, 0, 114), Size = UDim2.new(1, -12, 0, 22), Text = pet.name,
-			MaxTextSize = 18, Font = Enum.Font.FredokaOne, ZIndex = 5, Parent = card })
-		Ui.text({ Position = UDim2.new(0, 6, 0, 136), Size = UDim2.new(1, -12, 0, 16), Text = pet.rarity .. " • " ..
-			(pet.xp == 0 and "Gratis" or (pet.xp .. " Poin Rank")), TextColor3 = rarityColor, MaxTextSize = 14, ZIndex = 5, Parent = card })
-		local button = Ui.button({ Position = UDim2.new(0.1, 0, 0, 160), Size = UDim2.new(0.8, 0, 0, 38), Text = "",
-			MaxTextSize = 16, ZIndex = 6 }, function()
+		local card = Ui.new("Frame", { Name = pet.id, LayoutOrder = order, BackgroundColor3 = T.Paper, BorderSizePixel = 0, ZIndex = 5,
+			Parent = grid })
+		Ui.corner(card, 16)
+		local stroke = Ui.stroke(card, T.Line, 1.5)
+		local stage = Ui.new("Frame", { Name = "Panggung", Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 0, 96),
+			BackgroundColor3 = rarityColor, BackgroundTransparency = 0.78, BorderSizePixel = 0, ZIndex = 5, Parent = card })
+		Ui.corner(stage, 12)
+		local view = viewport(stage, pet.id, { Size = UDim2.fromScale(1, 1), ZIndex = 5 })
+		Ui.chip({ Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(0, 20), Text = string.upper(pet.rarity), TextSize = 11, ZIndex = 6,
+			Parent = stage }, Ui.darker(rarityColor, 0.3))
+		local name = Ui.text({ Position = UDim2.fromOffset(10, 110), Size = UDim2.new(1, -20, 0, 22), Text = pet.name, Font = F.Display,
+			TextSize = 17, Scaled = true, MaxTextSize = 17, TextColor3 = T.Ink, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5,
+			Parent = card })
+		local requirement = Ui.text({ Position = UDim2.fromOffset(10, 132), Size = UDim2.new(1, -20, 0, 16), Text = "", Font = F.Medium,
+			TextSize = 13, TextColor3 = T.InkSoft, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5, Parent = card })
+		local button = Ui.button({ Position = UDim2.new(0, 8, 1, -38), Size = UDim2.new(1, -16, 0, 30), Text = "", TextSize = 14, Radius = 10,
+			ZIndex = 6 }, function()
 			local xp = localPlayer:GetAttribute("PoinRank") or 0
 			if PetCatalog.IsUnlocked(pet.id, xp) then
 				ctx.remotes.EquipPet:FireServer(pet.id)
 				ctx.play("Hint")
 			else
-				ctx.showToast("🔒 Masih terkunci", "Kumpulkan " .. (pet.xp - xp) .. " Poin Rank lagi untuk membuka " .. pet.name .. "!", T.Gold, 2.5)
+				ctx.showToast("Masih terkunci", "Kumpulkan " .. Ui.number(pet.xp - xp) .. " Poin Rank lagi untuk membuka pet ini.", T.Gold, 2.5)
 			end
 		end)
 		button.Parent = card
-		cards[pet.id] = { view = view, name = name, button = button, stroke = stroke, pet = pet }
+		cards[pet.id] = { view = view, stage = stage, name = name, requirement = requirement, button = button, stroke = stroke, pet = pet,
+			color = rarityColor }
 	end
 
 	local function refreshMenu()
 		local xp = localPlayer:GetAttribute("PoinRank") or 0
 		local equipped = localPlayer:GetAttribute("Pet")
 		local nextPet = PetCatalog.Next(xp)
-		info.Text = "🏅 Poin Rank kamu: " .. xp .. (nextPet and ("   •   Pet berikutnya: " .. nextPet.name .. " (" .. (nextPet.xp - xp)
-			.. " poin lagi)") or "   •   👑 Semua pet sudah terbuka!")
+		xpLabel.Text = Ui.number(xp)
+		if nextPet then
+			local previous = 0
+			for _, pet in ipairs(PetCatalog.List) do
+				if pet.xp <= xp then
+					previous = pet.xp
+				end
+			end
+			nextLabel.Text = "Pet berikutnya: " .. nextPet.name
+			nextFill.Size = UDim2.fromScale(math.clamp((xp - previous) / math.max(1, nextPet.xp - previous), 0, 1), 1)
+			remainLabel.Text = Ui.number(nextPet.xp - xp) .. " poin lagi"
+		else
+			nextLabel.Text = "Semua pet sudah terbuka. Hebat!"
+			nextFill.Size = UDim2.fromScale(1, 1)
+			remainLabel.Text = "KOLEKSI LENGKAP"
+		end
 		for id, card in pairs(cards) do
 			local unlocked = PetCatalog.IsUnlocked(id, xp)
-			card.view.ImageColor3 = unlocked and Color3.new(1, 1, 1) or Color3.new(0, 0, 0) -- siluet jika terkunci
+			-- pet terkunci tampil sebagai siluet
+			card.view.ImageColor3 = unlocked and Color3.new(1, 1, 1) or LOCKED_TINT
+			card.view.ImageTransparency = unlocked and 0 or 0.15
+			card.stage.BackgroundColor3 = unlocked and card.color or T.Line
 			card.name.Text = unlocked and card.pet.name or "???"
+			card.requirement.Text = card.pet.xp == 0 and "Pet awal" or (Ui.number(card.pet.xp) .. " Poin Rank")
+			card.stroke.Color = id == equipped and T.Good or T.Line
+			card.stroke.Thickness = id == equipped and 2.5 or 1.5
 			if id == equipped then
-				card.button.Text = "✔ Dipakai"
+				card.button.Text = "DIPAKAI"
 				card.button.BackgroundColor3 = T.Good
+				card.button.TextColor3 = T.White
 			elseif unlocked then
-				card.button.Text = "Pakai"
-				card.button.BackgroundColor3 = T.Accent
+				card.button.Text = "PAKAI"
+				card.button.BackgroundColor3 = T.Primary
+				card.button.TextColor3 = T.White
 			else
-				card.button.Text = "🔒 " .. card.pet.xp
-				card.button.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+				card.button.Text = "TERKUNCI"
+				card.button.BackgroundColor3 = T.Paper2
+				card.button.TextColor3 = T.InkSoft
 			end
 		end
 	end
@@ -192,23 +240,40 @@ function Pets.Init(ctx)
 		ctx.closeAllModals()
 		refreshMenu()
 		menu.Visible = true
-		Ui.pop(menu, 0.85)
+		Ui.pop(menu, 0.9)
 	end
 
-	-- JENDELA PET BARU
-	local popup = ctx.makeModal("ModalPetBaru", "🎉 PET BARU TERBUKA! 🎉", 0.5, 0.7)
-	local popupHolder = Ui.new("Frame", { Position = UDim2.new(0.1, 0, 0.12, 0), Size = UDim2.new(0.8, 0, 0.55, 0),
-		BackgroundTransparency = 1, ZIndex = 5, Parent = popup })
-	local popupName = Ui.text({ Position = UDim2.new(0, 10, 0.68, 0), Size = UDim2.new(1, -20, 0.1, 0), Font = Enum.Font.FredokaOne,
-		MaxTextSize = 34, ZIndex = 5, Parent = popup })
-	local popupDesc = Ui.text({ Position = UDim2.new(0, 10, 0.78, 0), Size = UDim2.new(1, -20, 0.07, 0), TextColor3 = T.Sub,
-		Font = Enum.Font.GothamMedium, MaxTextSize = 18, ZIndex = 5, Parent = popup })
-	local collection = Ui.button({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(0.6, 0, 0.09, 0),
-		Text = "🐾 Lihat Koleksi Pet", BackgroundColor3 = T.Good, ZIndex = 6 }, function()
+	-- JENDELA PET BARU (520 x 540; area konten 476 tinggi)
+	local popup, _, popupContent = ctx.makeModal("ModalPetBaru", "Pet Baru Terbuka!", 520, 540, T.Pink)
+	popup.ZIndex = 7 -- tampil di atas jendela Hasil Akhir; menutupnya kembali ke hasil
+	local popupStage = Ui.new("Frame", { Name = "Panggung", Position = UDim2.fromOffset(24, 20), Size = UDim2.new(1, -48, 0, 250),
+		BackgroundColor3 = T.White, BorderSizePixel = 0, ZIndex = 5, Parent = popupContent })
+	Ui.corner(popupStage, 18)
+	local popupGradient = Ui.new("UIGradient", { Rotation = 90, Parent = popupStage })
+	local popupView = Ui.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 5, Parent = popupStage })
+	local popupChip = Ui.chip({ Position = UDim2.fromOffset(14, 14), Text = "", TextSize = 12, ZIndex = 6, Parent = popupStage }, T.Primary)
+	local popupName = Ui.text({ Position = UDim2.fromOffset(24, 284), Size = UDim2.new(1, -48, 0, 40), Text = "", Font = F.Display, TextSize = 32,
+		Scaled = true, MaxTextSize = 32, TextColor3 = T.Ink, ZIndex = 5, Parent = popupContent })
+	local popupDesc = Ui.text({ Position = UDim2.fromOffset(40, 326), Size = UDim2.new(1, -80, 0, 44), Text = "", Font = F.Medium, TextSize = 17,
+		TextColor3 = T.InkSoft, ZIndex = 5, Parent = popupContent })
+	local equipNow
+	local collection = Ui.button({ AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 24, 1, -24), Size = UDim2.new(0.5, -30, 0, 52),
+		Text = "LIHAT KOLEKSI", TextSize = 17, ZIndex = 6 }, function()
 		Pets.OpenMenu()
+	end, "neutral")
+	collection.Parent = popupContent
+	equipNow = Ui.button({ AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.new(0.5, -30, 0, 52),
+		Text = "PAKAI SEKARANG", TextSize = 17, ZIndex = 6 }, nil, "success")
+	equipNow.Parent = popupContent
+
+	local popupCamera, spinStart, popupPetId = nil, 0, nil
+	equipNow.Activated:Connect(function()
+		if popupPetId then
+			ctx.remotes.EquipPet:FireServer(popupPetId)
+			ctx.play("Hint")
+		end
+		popup.Visible = false
 	end)
-	collection.Parent = popup
-	local popupCamera, spinStart = nil, 0
 	RunService.RenderStepped:Connect(function()
 		if popup.Visible and popupCamera then
 			local angle = (os.clock() - spinStart) * 0.8
@@ -217,25 +282,37 @@ function Pets.Init(ctx)
 	end)
 
 	local queue = {}
+	local showing = false
 	local function showNext()
 		local pet = table.remove(queue, 1)
 		if not pet then
+			showing = false
 			return
 		end
-		Ui.clear(popupHolder)
-		local _, camera = viewport(popupHolder, pet.id, { Size = UDim2.fromScale(1, 1), ZIndex = 5 })
+		showing = true
+		local catalogPet = PetCatalog.Get(pet.id)
+		if not catalogPet then
+			showNext()
+			return
+		end
+		local rarityColor = PetCatalog.Rarities[catalogPet.rarity]
+		Ui.clear(popupView)
+		local _, camera = viewport(popupView, catalogPet.id, { Size = UDim2.fromScale(1, 1), ZIndex = 5 })
 		popupCamera = camera
 		spinStart = os.clock()
-		local catalogPet = PetCatalog.Get(pet.id)
+		popupPetId = catalogPet.id
+		popupGradient.Color = ColorSequence.new(rarityColor:Lerp(T.White, 0.55), rarityColor:Lerp(T.White, 0.85))
+		popupChip.Text = string.upper(catalogPet.rarity)
+		popupChip.BackgroundColor3 = Ui.darker(rarityColor, 0.3)
 		popupName.Text = catalogPet.name
-		popupName.TextColor3 = PetCatalog.Rarities[catalogPet.rarity]
-		popupDesc.Text = catalogPet.rarity .. " • " .. catalogPet.desc
-		ctx.closeAllModals()
+		popupDesc.Text = catalogPet.desc
 		popup.Visible = true
-		Ui.pop(popup, 0.5)
+		Ui.pop(popup, 0.6)
 		ctx.play("Fanfare")
 		if #queue > 0 then
 			task.delay(4, showNext)
+		else
+			showing = false
 		end
 	end
 
@@ -243,7 +320,9 @@ function Pets.Init(ctx)
 		for _, pet in ipairs(list) do
 			table.insert(queue, pet)
 		end
-		showNext()
+		if not showing then
+			showNext()
+		end
 	end
 end
 

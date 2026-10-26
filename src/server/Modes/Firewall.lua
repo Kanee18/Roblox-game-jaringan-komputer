@@ -67,7 +67,7 @@ function Firewall.Run(Core, list)
 	Core.flags.lock = false
 	arena:SetCourseBarrier(false)
 	Core.broadcast({ type = "Race", endsAt = endsAt, gates = gates }, true)
-	Core.idleScreen("🧱 LINTASAN FIREWALL sedang berlangsung di langit! Pilih pintu jawaban yang benar!")
+	Core.idleScreen("LINTASAN FIREWALL sedang berlangsung di langit! Pilih pintu jawaban yang benar!")
 	for player, racer in pairs(racers) do
 		Core.send(player, gatePayload(Core, prepared[racer.gate], racer.gate, gates))
 	end
@@ -154,7 +154,7 @@ function Firewall.Run(Core, list)
 							table.insert(finishOrder, player)
 							local place = #finishOrder
 							local bonus = (Config.FinishBonus[place] or 0) + Config.FinishAllBonus
-							Core.addBonus(player, bonus, "🏁 Finish urutan ke-" .. place .. "!")
+							Core.addBonus(player, bonus, "Finish urutan ke-" .. place .. "!")
 							arena:CelebrateFinish()
 							Core.broadcast({ type = "Finished", name = Core.displayName(player), place = place })
 						end

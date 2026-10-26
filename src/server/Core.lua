@@ -35,6 +35,7 @@ Core.hintProvider = nil -- fungsi bantuan untuk mode yang sedang berjalan
 Core.answerHandler = nil -- penerima jawaban tombol (Kuis Kilat)
 Core.textHandler = nil -- penerima jawaban ketikan (Pecahkan Sandi)
 Core.currentMode = nil
+Core.adventure = nil -- { modes = {...}, index = n } selama Petualangan berlangsung
 
 local questionCounter = 0
 
@@ -150,6 +151,7 @@ function Core.newStats()
 		bestStreak = 0,
 		correct = 0,
 		answered = 0,
+		attempted = 0, -- soal yang benar-benar dicoba (tidak termasuk yang dilewatkan)
 		hints = Config.StartingHints,
 		topics = {},
 		choice = nil,
@@ -225,6 +227,9 @@ function Core.award(player, topicId, isCorrect, opts)
 	local session = Core.getSession(player)
 	st.answered += 1
 	session.answered += 1
+	if opts.answered ~= false then
+		st.attempted += 1
+	end
 	local topicStat = st.topics[topicId]
 	if not topicStat then
 		topicStat = { correct = 0, total = 0 }
@@ -328,7 +333,7 @@ function Core.questionPayload(prepared, index, total, isBoss, endsAt, duration, 
 		options = prepared.options or {},
 		endsAt = endsAt,
 		duration = duration,
-		topicName = topic.icon .. " " .. topic.name,
+		topicName = topic.name,
 		topicColor = topic.color,
 		isBoss = isBoss,
 		mode = Core.currentMode and Core.currentMode.id or "kotak",
@@ -351,8 +356,8 @@ end
 function Core.screenQuestion(prepared, index, total, isBoss, info)
 	local topic = Config.GetTopic(prepared.topic)
 	Core.arena:SetScreen({
-		topic = topic.icon .. " " .. topic.name,
-		number = isBoss and ("⚠ SOAL BOS ⚠  " .. index .. "/" .. total) or ("SOAL " .. index .. "/" .. total),
+		topic = topic.name,
+		number = isBoss and ("SOAL BOS  " .. index .. "/" .. total) or ("SOAL " .. index .. "/" .. total),
 		question = prepared.text,
 		info = info,
 		accent = isBoss and Color3.fromRGB(255, 70, 70) or topic.color,
@@ -367,7 +372,7 @@ function Core.screenReveal(prepared)
 	else
 		answer = prepared.display or ""
 	end
-	Core.arena:SetScreen({ timer = "0", info = "✔ Jawaban: " .. answer .. "\n📘 " .. (prepared.explanation or "") })
+	Core.arena:SetScreen({ timer = "0", info = "✔ Jawaban: " .. answer .. "\n" .. (prepared.explanation or "") })
 end
 
 function Core.idleScreen(info, timer)

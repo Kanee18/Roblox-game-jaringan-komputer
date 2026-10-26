@@ -7,7 +7,7 @@
 local Kilat = {}
 
 function Kilat.StartCFrame(arena)
-	return arena:GetStartCFrame()
+	return arena:GetStageCFrame()
 end
 
 local function ask(Core, q, index, total)
@@ -21,7 +21,7 @@ local function ask(Core, q, index, total)
 		local st = Core.stats[player]
 		st.choice, st.choiceTime = nil, nil
 	end
-	arena:SetQuestion(prepared)
+	arena:SetStageQuestion(prepared)
 	Core.current = prepared
 	Core.phase = "Question"
 	Core.flags.lock = false
@@ -48,7 +48,7 @@ local function ask(Core, q, index, total)
 	end
 
 	Core.broadcast(Core.questionPayload(prepared, index, total, isBoss, endsAt, duration, { clickable = true }), true)
-	Core.screenQuestion(prepared, index, total, isBoss, "⚡ KUIS KILAT: tekan tombol jawaban di layarmu secepat mungkin!")
+	Core.screenQuestion(prepared, index, total, isBoss, "KUIS KILAT: tekan tombol jawaban di layarmu secepat mungkin!")
 
 	local function everyoneAnswered()
 		local players = Core.participants(startAt)
@@ -93,13 +93,12 @@ local function ask(Core, q, index, total)
 		})
 	end
 	Core.broadcast(Core.revealPayload(prepared, counts), true)
-	arena:Reveal(prepared.correctPad, counts)
+	arena:RevealStage(prepared.correctPad, counts)
 	Core.screenReveal(prepared)
 
 	if not Core.waitFor(Config.RevealTime + Config.ExplanationTime - 2) then
 		return false
 	end
-	arena:ResetPads(false)
 	return true
 end
 

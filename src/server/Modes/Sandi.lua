@@ -7,7 +7,7 @@
 local Sandi = {}
 
 function Sandi.StartCFrame(arena)
-	return arena:GetStartCFrame()
+	return arena:GetLabCFrame()
 end
 
 -- Petunjuk huruf: memperlihatkan sepertiga huruf pertama jawaban, contoh "R O _ _ _ _"
@@ -33,7 +33,6 @@ local function ask(Core, prepared, index, total)
 	for _, player in ipairs(Core.participants()) do
 		Core.stats[player].sandi = { attempts = 0, done = false }
 	end
-	arena:ResetPads(true, "⌨ Ketik jawabanmu!")
 	Core.current = prepared
 	Core.phase = "Question"
 	Core.flags.lock = false
@@ -89,7 +88,7 @@ local function ask(Core, prepared, index, total)
 		isCipher = prepared.isCipher == true,
 		cipherText = prepared.cipherText,
 	}), true)
-	Core.screenQuestion(prepared, index, total, isBoss, "🔐 PECAHKAN SANDI: ketik jawabanmu di kotak yang muncul di layarmu!")
+	Core.screenQuestion(prepared, index, total, isBoss, "PECAHKAN SANDI: ketik jawabanmu di kotak yang muncul di layarmu!")
 
 	local function everyoneDone()
 		local players = Core.participants(startAt)
@@ -143,7 +142,6 @@ function Sandi.Run(Core, list)
 			break
 		end
 	end
-	Core.arena:ResetPads(true)
 	return #list
 end
 

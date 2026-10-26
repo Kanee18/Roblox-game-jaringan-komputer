@@ -95,14 +95,14 @@ function Roster.ApplyTag(player)
 	if Core.isRegistered(player) then
 		local kelas = player:GetAttribute("Kelas")
 		nameLabel.Text = Core.displayName(player) .. ((kelas and kelas ~= "") and (" (" .. kelas .. ")") or "")
-		titleLabel.Text = "⭐ " .. rank.name
+		titleLabel.Text = rank.name
 	elseif player:GetAttribute("IsTeacher") then
 		nameLabel.Text = player.DisplayName
-		titleLabel.Text = "🎓 Guru"
+		titleLabel.Text = "Guru"
 		titleLabel.TextColor3 = Color3.fromRGB(255, 200, 90)
 	else
 		nameLabel.Text = player.DisplayName
-		titleLabel.Text = "📝 Belum mendaftar"
+		titleLabel.Text = "Belum mendaftar"
 		titleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	end
 	nameLabel.Parent = tag

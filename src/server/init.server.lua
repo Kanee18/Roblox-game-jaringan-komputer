@@ -1,14 +1,15 @@
 --[[
 	NET QUEST - Server utama
-	Alur: Siswa daftar (nama + absen) -> Lobi/Taman -> Pengenalan mode -> Ronde kuis -> Juara & hadiah -> ...
+	Alur: Siswa daftar (nama + absen) -> Alun-alun -> PETUALANGAN 4 GAME -> Juara & hadiah -> ...
 
-	Mode permainan (lihat folder Modes):
-	  🏃 Lari & Pilih      berdiri di kotak jawaban, kotak salah jatuh
-	  ⚡ Kuis Kilat        tekan tombol jawaban secepat mungkin
-	  🧱 Lintasan Firewall balapan obby di langit, pilih pintu jawaban
-	  🔐 Pecahkan Sandi    ketik jawaban & pecahkan Caesar Cipher
+	Petualangan = keempat game dimainkan berurutan, poinnya DIJUMLAHKAN menjadi POIN TOTAL:
+	  1. Lari & Pilih       (Arena utara)      berdiri di kotak jawaban, kotak salah jatuh ke kolam
+	  2. Kuis Kilat         (Panggung timur)   tekan tombol jawaban secepat mungkin
+	  3. Lintasan Firewall  (Menara selatan)   balapan obby di langit, pilih pintu jawaban
+	  4. Pecahkan Sandi     (Lab barat)        ketik jawaban & pecahkan Caesar Cipher
+	Siswa yang ikut keempat game mendapat BONUS TAMAT.
 
-	Hadiah: poin dari jawaban benar menjadi POIN RANK (tersimpan). Poin Rank membuka gelar & PET.
+	Hadiah: poin total menjadi POIN RANK (tersimpan). Poin Rank membuka gelar & PET.
 ]]
 
 local Players = game:GetService("Players")
@@ -32,21 +33,18 @@ local arena = MapBuilder.Build()
 Core.arena = arena
 arena:ConnectPit()
 arena:StartDecorations()
-arena:ResetPads(true)
 Roster.Init(Core)
 
 local remotes = Core.remotes
 local settings, flags = Core.settings, Core.flags
 
 local function settingsPayload()
-	local topic = Config.GetTopic(settings.topic)
-	local mode = Config.GetMode(settings.mode)
 	return {
 		type = "Settings",
 		topic = settings.topic,
-		topicName = topic.icon .. " " .. topic.name,
+		topicName = Config.GetTopic(settings.topic).name,
 		mode = settings.mode,
-		modeName = mode.icon .. " " .. mode.name,
+		modeName = Config.GetMode(settings.mode).name,
 		count = settings.count,
 		time = settings.time,
 		auto = settings.auto,
@@ -92,7 +90,7 @@ end
 local function applyPet(player)
 	local data = PlayerData.Get(player)
 	local petId = data.pet
-	if not PetCatalog.IsUnlocked(petId, data.xp) then
+	if petId ~= "" and not PetCatalog.IsUnlocked(petId, data.xp) then
 		petId = PetCatalog.Best(data.xp).id
 		PlayerData.SetPet(player, petId)
 	end
@@ -106,6 +104,7 @@ remotes.EquipPet.OnServerEvent:Connect(function(player, petId)
 		PlayerData.SetPet(player, petId)
 		player:SetAttribute("Pet", petId)
 	elseif petId == "" then
+		PlayerData.SetPet(player, "")
 		player:SetAttribute("Pet", "") -- sembunyikan pet
 	end
 end)
@@ -167,6 +166,9 @@ end)
 remotes.ClientReady.OnServerEvent:Connect(function(player)
 	Core.send(player, settingsPayload())
 	Roster.SendProfile(player)
+	if Core.adventure then
+		Core.send(player, Core.adventurePayload())
+	end
 	if Core.snapshot then
 		Core.send(player, Core.snapshot)
 	end
@@ -179,10 +181,28 @@ task.spawn(function()
 		task.wait(1)
 		for _, player in ipairs(Players:GetPlayers()) do
 			local root = Core.rootOf(player)
-			if root and root.Position.Y < -60 then
-				local inArenaRound = Core.currentMode and Core.currentMode.id ~= "firewall"
-				Core.teleport(player, inArenaRound and arena:GetStartCFrame() or arena:GetLobbyCFrame())
+			if root and root.Position.Y < -40 then
+				local module = Core.currentMode and ModeModules[Core.currentMode.id]
+				local inZone = module and Core.currentMode.id ~= "firewall"
+				Core.teleport(player, inZone and module.StartCFrame(arena) or arena:GetLobbyCFrame())
 			end
+		end
+	end
+end)
+
+-- Papan peringkat di alun-alun selalu menampilkan POIN TOTAL terbaru selama petualangan
+task.spawn(function()
+	while true do
+		task.wait(2)
+		if Core.adventure and Core.phase ~= "RoundEnd" then
+			local rows = {}
+			for _, player in ipairs(Core.participants()) do
+				table.insert(rows, { name = Core.displayName(player), score = Core.stats[player].score })
+			end
+			table.sort(rows, function(a, b)
+				return a.score > b.score
+			end)
+			arena:SetLeaderboard("POIN TOTAL • GAME " .. Core.adventure.index .. "/" .. #Core.adventure.modes, rows)
 		end
 	end
 end)
@@ -242,7 +262,7 @@ remotes.UseHint.OnServerInvoke = function(player)
 		return nil, "Bantuan hanya bisa dipakai saat soal berlangsung."
 	end
 	if st.hints <= 0 then
-		return nil, "Bantuan habis! Jawab benar " .. Config.HintEveryStreak .. "x berturut-turut untuk dapat lagi."
+		return nil, "Bantuan habis. Jawab benar " .. Config.HintEveryStreak .. "x berturut-turut untuk dapat lagi."
 	end
 	local result, err = Core.hintProvider(player, st)
 	if not result then
@@ -266,7 +286,7 @@ remotes.SubmitText.OnServerInvoke = function(player, questionId, text)
 end
 
 ---------------------------------------------------------------------
--- ALUR PERMAINAN
+-- LOBI
 ---------------------------------------------------------------------
 local function registeredCount()
 	return #Core.participants()
@@ -276,8 +296,10 @@ local function waitInLobby()
 	Core.phase = "Lobby"
 	Core.current = nil
 	Core.currentMode = nil
+	Core.adventure = nil
 	flags.stop, flags.lock = false, false
 	arena:ResetPads(true)
+	arena:SetStageQuestion(nil)
 	while true do
 		if flags.start then
 			break
@@ -292,9 +314,8 @@ local function waitInLobby()
 					cancelled = true
 					break
 				end
-				local nextMode = settings.mode == "giliran" and "Bergiliran" or Config.GetMode(settings.mode).name
-				Core.idleScreen("Kuis berikutnya: " .. Config.GetTopic(settings.topic).name .. " • Mode: " .. nextMode
-					.. ". Sambil menunggu, baca ZONA MATERI & lihat TAMAN PET!", tostring(math.ceil(endsAt - Core.now())))
+				Core.idleScreen("Berikutnya: " .. Config.GetMode(settings.mode).name .. " • Topik: " .. Config.GetTopic(settings.topic).name
+					.. ". Sambil menunggu, baca Zona Materi dan lihat Taman Pet!", tostring(math.ceil(endsAt - Core.now())))
 				task.wait(0.25)
 			end
 			if not cancelled then
@@ -311,35 +332,160 @@ local function waitInLobby()
 	flags.start = false
 end
 
-local rotationIndex = 0
-local function chooseMode()
-	if settings.mode ~= "giliran" then
-		return Config.GetMode(settings.mode)
+---------------------------------------------------------------------
+-- SATU GAME
+---------------------------------------------------------------------
+local function ranked(list)
+	table.sort(list, function(a, b)
+		if a.score ~= b.score then
+			return a.score > b.score
+		end
+		return (a.correct or 0) > (b.correct or 0)
+	end)
+	return list
+end
+
+-- Memainkan satu game. Mengembalikan jumlah soal yang dimainkan, atau nil jika dihentikan guru.
+local function playGame(mode, index, total)
+	local module = ModeModules[mode.id]
+	Core.currentMode = mode
+	if Core.adventure then
+		Core.adventure.index = index
+		Core.broadcast(Core.adventurePayload())
 	end
-	rotationIndex = rotationIndex % #Config.RotationOrder + 1
-	return Config.GetMode(Config.RotationOrder[rotationIndex])
+
+	Core.phase = "Intro"
+	if mode.id == "firewall" then
+		arena:SetCourseBarrier(true)
+	end
+	for _, player in ipairs(Core.participants()) do
+		Core.teleport(player, module.StartCFrame(arena))
+	end
+	local list = module.Prepare(Core)
+	local before = {}
+	for player, st in pairs(Core.stats) do
+		before[player] = { score = st.score, correct = st.correct, answered = st.answered, attempted = st.attempted }
+	end
+
+	Core.broadcast({
+		type = "ModeIntro",
+		modeId = mode.id,
+		modeName = mode.name,
+		desc = mode.desc,
+		color = mode.color,
+		topicName = Config.GetTopic(settings.topic).name,
+		total = #list,
+		gameIndex = index,
+		gameTotal = total,
+		endsAt = Core.now() + Config.ModeIntroTime,
+	}, true)
+	Core.idleScreen((total > 1 and ("GAME " .. index .. " DARI " .. total .. ": ") or "") .. string.upper(mode.name) .. ". " .. mode.desc, "")
+
+	local played = 0
+	if Core.waitFor(Config.ModeIntroTime) then
+		played = module.Run(Core, list)
+	end
+	Core.answerHandler, Core.textHandler, Core.hintProvider, Core.current = nil, nil, nil, nil
+	if flags.stop then
+		return nil
+	end
+
+	-- catat poin game ini untuk setiap siswa
+	local rows = {}
+	for _, player in ipairs(Core.participants()) do
+		local st = Core.stats[player]
+		local b = before[player] or { score = 0, correct = 0, answered = 0, attempted = 0 }
+		local g = { score = st.score - b.score, correct = st.correct - b.correct, answered = st.answered - b.answered,
+			attempted = st.attempted - b.attempted }
+		st.games = st.games or {}
+		st.games[mode.id] = g
+		if g.answered > 0 then
+			table.insert(rows, { player = player, name = Core.displayName(player), userId = player.UserId, score = g.score, correct = g.correct,
+				total = g.answered })
+		end
+	end
+	return played, ranked(rows)
 end
 
+-- Jeda singkat setelah satu game di Petualangan: hasil game ini + poin total sementara
+local function showGameBreak(mode, index, total, gameRows)
+	local totals = {}
+	for _, player in ipairs(Core.participants()) do
+		local st = Core.stats[player]
+		if st.answered > 0 then
+			table.insert(totals, { name = Core.displayName(player), userId = player.UserId, score = st.score, correct = st.correct, total = st.answered })
+		end
+	end
+	ranked(totals)
+	local nextMode = Config.GetMode(Config.AdventureOrder[index + 1])
+	local publicGame, publicTotal = {}, {}
+	for i = 1, math.min(8, #gameRows) do
+		local r = gameRows[i]
+		publicGame[i] = { name = r.name, userId = r.userId, score = r.score, correct = r.correct, total = r.total }
+	end
+	for i = 1, math.min(8, #totals) do
+		publicTotal[i] = totals[i]
+	end
+	Core.phase = "Break"
+	Core.broadcast({
+		type = "GameEnd",
+		gameIndex = index,
+		gameTotal = total,
+		modeName = mode.name,
+		color = mode.color,
+		gameRanking = publicGame,
+		totalRanking = publicTotal,
+		nextName = nextMode.name,
+		endsAt = Core.now() + Config.GameBreakTime,
+	}, true)
+	for _, player in ipairs(Core.participants()) do
+		local st = Core.stats[player]
+		local g = st.games and st.games[mode.id]
+		if g then
+			Core.send(player, { type = "GameScore", gameScore = g.score, correct = g.correct, answered = g.answered, totalScore = st.score })
+		end
+	end
+	Core.idleScreen("Hasil Game " .. index .. " • Berikutnya: " .. nextMode.name, "")
+	arena:SetHallOfFame(publicTotal, "POIN TOTAL • GAME " .. index .. "/" .. total)
+	return Core.waitFor(Config.GameBreakTime)
+end
+
+---------------------------------------------------------------------
+-- AKHIR SESI: juara, rapor, hadiah pet, rekap
+---------------------------------------------------------------------
 local function topicLabel(topicId)
-	local topic = Config.GetTopic(topicId)
-	return topic.icon .. " " .. topic.name
+	return Config.GetTopic(topicId).name
 end
 
-local function finishRound(mode, totalQuestions)
+local function finishSession(modes, totalQuestions)
 	Core.phase = "RoundEnd"
+
+	-- bonus tamat untuk yang ikut menjawab di semua game
+	if #modes > 1 then
+		for _, player in ipairs(Core.participants()) do
+			local st = Core.stats[player]
+			local all = true
+			for _, mode in ipairs(modes) do
+				local g = st.games and st.games[mode.id]
+				if not g or g.attempted == 0 then
+					all = false
+				end
+			end
+			if all then
+				st.completedAll = true
+				Core.addBonus(player, Config.CompletionBonus, "Bonus tamat: kamu menyelesaikan keempat game!")
+			end
+		end
+	end
+
 	local ranking = {}
 	for _, player in ipairs(Core.participants()) do
 		local st = Core.stats[player]
 		if st.answered > 0 then
-			table.insert(ranking, { player = player, st = st })
+			table.insert(ranking, { player = player, st = st, score = st.score, correct = st.correct })
 		end
 	end
-	table.sort(ranking, function(a, b)
-		if a.st.score ~= b.st.score then
-			return a.st.score > b.st.score
-		end
-		return a.st.correct > b.st.correct
-	end)
+	ranked(ranking)
 
 	local publicRanking = {}
 	for i, entry in ipairs(ranking) do
@@ -354,11 +500,10 @@ local function finishRound(mode, totalQuestions)
 			break
 		end
 	end
-	Core.broadcast({ type = "RoundEnd", ranking = publicRanking, totalQuestions = totalQuestions,
-		modeName = mode.icon .. " " .. mode.name }, true)
-	arena:SetHallOfFame(publicRanking)
+	local title = #modes > 1 and "Petualangan 4 Game" or modes[1].name
+	Core.broadcast({ type = "RoundEnd", ranking = publicRanking, totalQuestions = totalQuestions, modeName = title }, true)
+	arena:SetHallOfFame(publicRanking, "JUARA • " .. string.upper(title))
 
-	-- ringkasan pribadi + rekomendasi belajar + hadiah
 	for position, entry in ipairs(ranking) do
 		local player, st = entry.player, entry.st
 		local weak, strong
@@ -371,6 +516,12 @@ local function finishRound(mode, totalQuestions)
 				strong = { id = topicId, ratio = ratio, correct = topicStat.correct, total = topicStat.total }
 			end
 		end
+		local games = {}
+		for _, mode in ipairs(modes) do
+			local g = st.games and st.games[mode.id]
+			table.insert(games, { name = mode.name, color = mode.color, score = g and g.score or 0, correct = g and g.correct or 0,
+				answered = g and g.answered or 0 })
+		end
 		Core.getSession(player).rounds += 1
 		local oldXp = PlayerData.Get(player).xp
 		local data, rankUp = PlayerData.AddRoundResult(player, st.score, st.correct, st.answered, position == 1)
@@ -380,8 +531,7 @@ local function finishRound(mode, totalQuestions)
 			table.insert(newPets, { id = pet.id, name = pet.name, rarity = pet.rarity })
 		end
 		if #newPets > 0 then
-			-- langsung pakai pet terbaru yang terbuka
-			PlayerData.SetPet(player, newPets[#newPets].id)
+			PlayerData.SetPet(player, newPets[#newPets].id) -- langsung pakai pet terbaru
 		end
 		applyPet(player)
 		local nextPet = PetCatalog.Next(data.xp)
@@ -393,6 +543,9 @@ local function finishRound(mode, totalQuestions)
 			correct = st.correct,
 			answered = st.answered,
 			bestStreak = st.bestStreak,
+			games = games,
+			completedAll = st.completedAll == true,
+			completionBonus = Config.CompletionBonus,
 			weakTopic = weak and weak.ratio < 1 and topicLabel(weak.id) or nil,
 			weakId = weak and weak.ratio < 1 and weak.id or nil,
 			weakText = weak and (weak.correct .. "/" .. weak.total) or nil,
@@ -411,9 +564,9 @@ local function finishRound(mode, totalQuestions)
 		Core.updateLeaderstats(player)
 		Roster.ApplyTag(player)
 	end
-	Roster.PrintRecap(mode.name .. " • " .. Config.GetTopic(settings.topic).name)
+	Roster.PrintRecap(title .. " • " .. Config.GetTopic(settings.topic).name)
 
-	-- semua ke taman, 3 besar naik podium
+	-- semua kembali ke alun-alun, 3 besar naik podium
 	for _, player in ipairs(Players:GetPlayers()) do
 		Core.teleport(player, arena:GetLobbyCFrame())
 	end
@@ -421,46 +574,51 @@ local function finishRound(mode, totalQuestions)
 		Core.teleport(ranking[rank].player, arena:GetPodiumCFrame(rank))
 	end
 	arena:CelebratePodium()
-	Core.idleScreen(#ranking > 0 and ("🏆 Juara ronde ini: " .. Core.displayName(ranking[1].player) .. " dengan "
-		.. ranking[1].st.score .. " poin! 🏆") or "Ronde selesai!")
-
+	Core.idleScreen(#ranking > 0 and ("Juara " .. title .. ": " .. Core.displayName(ranking[1].player) .. " dengan "
+		.. ranking[1].st.score .. " poin!") or "Selesai!")
 	Core.waitFor(Config.RoundEndTime)
 end
 
-local function runRound()
-	local mode = chooseMode()
-	local module = ModeModules[mode.id]
-	Core.currentMode = mode
+---------------------------------------------------------------------
+-- SESI (Petualangan 4 game atau satu game saja)
+---------------------------------------------------------------------
+local function chooseModes()
+	if settings.mode == "petualangan" then
+		local list = {}
+		for _, id in ipairs(Config.AdventureOrder) do
+			table.insert(list, Config.GetMode(id))
+		end
+		return list
+	end
+	return { Config.GetMode(settings.mode) }
+end
+
+function Core.adventurePayload()
+	local adv = Core.adventure
+	local names = {}
+	for i, mode in ipairs(adv.modes) do
+		names[i] = { name = mode.name, color = mode.color }
+	end
+	return { type = "Adventure", index = adv.index, games = names }
+end
+
+local function runSession()
+	local modes = chooseModes()
 	Core.resetRoundStats()
+	Core.adventure = { modes = modes, index = 1 }
 	broadcastSettings()
 
-	-- PENGENALAN MODE (cara main) + hitung mundur
-	Core.phase = "Intro"
-	if mode.id == "firewall" then
-		arena:SetCourseBarrier(true)
+	local totalQuestions = 0
+	for index, mode in ipairs(modes) do
+		local played, rows = playGame(mode, index, #modes)
+		if not played then
+			break
+		end
+		totalQuestions += played
+		if index < #modes and not showGameBreak(mode, index, #modes, rows) then
+			break
+		end
 	end
-	for _, player in ipairs(Core.participants()) do
-		Core.teleport(player, module.StartCFrame(arena))
-	end
-	local list = module.Prepare(Core)
-	local total = #list
-	Core.broadcast({
-		type = "ModeIntro",
-		modeId = mode.id,
-		modeName = mode.icon .. " " .. mode.name,
-		desc = mode.desc,
-		color = mode.color,
-		topicName = topicLabel(settings.topic),
-		total = total,
-		endsAt = Core.now() + Config.ModeIntroTime,
-	}, true)
-	Core.idleScreen("MODE: " .. mode.icon .. " " .. string.upper(mode.name) .. " — " .. mode.desc, "")
-
-	local played = 0
-	if Core.waitFor(Config.ModeIntroTime) then
-		played = module.Run(Core, list)
-	end
-	Core.answerHandler, Core.textHandler, Core.hintProvider, Core.current = nil, nil, nil, nil
 
 	if flags.stop then
 		Core.broadcast({ type = "Stopped" })
@@ -470,14 +628,17 @@ local function runRound()
 		end
 		return
 	end
-	finishRound(mode, played)
+	finishSession(modes, totalQuestions)
 end
 
 -- LOOP UTAMA
 task.wait(2)
 while true do
 	waitInLobby()
-	runRound()
+	runSession()
 	arena:ResetPads(true)
+	arena:SetStageQuestion(nil)
 	Core.currentMode = nil
+	Core.adventure = nil
+	Core.broadcast({ type = "AdventureEnd" })
 end

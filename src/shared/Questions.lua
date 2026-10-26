@@ -519,7 +519,7 @@ function Questions.PickIsian(topicId, count)
 			topic = w.topik,
 			kind = "ISIAN",
 			isCipher = true,
-			text = "🔐 Pecahkan sandi Caesar ini!  Setiap huruf sudah digeser MAJU " .. shift .. " huruf.\n"
+			text = "Pecahkan sandi Caesar ini! Setiap huruf sudah digeser MAJU " .. shift .. " huruf.\n"
 				.. encrypted .. "\nPetunjuk: " .. w.petunjuk,
 			cipherText = encrypted,
 			answers = { Questions.Normalize(w.kata) },

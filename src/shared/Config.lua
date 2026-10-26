@@ -16,22 +16,25 @@ Config.MaxNameLength = 30
 
 ---------------------------------------------------------------------
 -- MODE PERMAINAN
--- Guru bisa memilih mode di Panel Guru. "giliran" = mode berganti tiap ronde.
+-- "petualangan" = keempat game dimainkan berurutan dan poinnya DIJUMLAHKAN (poin total).
+-- Guru juga bisa memilih satu game saja di Panel Guru.
 ---------------------------------------------------------------------
 Config.Modes = {
-	{ id = "giliran", name = "Bergiliran (semua mode)", icon = "🔄", color = Color3.fromRGB(180, 120, 255),
-		desc = "Setiap ronde memakai mode yang berbeda." },
-	{ id = "kotak", name = "Lari & Pilih", icon = "🏃", color = Color3.fromRGB(70, 160, 255),
-		desc = "Lari dan BERDIRI di kotak jawaban yang benar. Kotak yang salah akan JATUH!" },
-	{ id = "kilat", name = "Kuis Kilat", icon = "⚡", color = Color3.fromRGB(255, 200, 50),
-		desc = "Tekan tombol jawaban secepat mungkin! Makin cepat, makin besar poinnya." },
-	{ id = "firewall", name = "Lintasan Firewall", icon = "🧱", color = Color3.fromRGB(255, 110, 70),
-		desc = "Balapan di lintasan langit! Pilih PINTU jawaban yang benar. Pintu salah = jatuh!" },
-	{ id = "sandi", name = "Pecahkan Sandi", icon = "🔐", color = Color3.fromRGB(90, 220, 140),
-		desc = "KETIK jawaban yang benar dan pecahkan kode rahasia Caesar Cipher!" },
+	{ id = "petualangan", name = "Petualangan 4 Game", icon = "", color = Color3.fromRGB(150, 110, 255),
+		desc = "Mainkan keempat game berurutan. Poin semua game dijumlahkan menjadi POIN TOTAL." },
+	{ id = "kotak", name = "Lari & Pilih", icon = "", color = Color3.fromRGB(64, 140, 240),
+		desc = "Lari dan berdiri di kotak jawaban yang benar. Kotak yang salah akan jatuh ke kolam!" },
+	{ id = "kilat", name = "Kuis Kilat", icon = "", color = Color3.fromRGB(245, 180, 40),
+		desc = "Tekan tombol jawaban secepat mungkin. Jawaban tidak bisa diganti, makin cepat makin besar poinnya." },
+	{ id = "firewall", name = "Lintasan Firewall", icon = "", color = Color3.fromRGB(240, 100, 70),
+		desc = "Balapan di lintasan langit. Masuk ke pintu jawaban yang benar, pintu yang salah membuatmu jatuh!" },
+	{ id = "sandi", name = "Pecahkan Sandi", icon = "", color = Color3.fromRGB(60, 180, 130),
+		desc = "Ketik jawaban yang benar dan pecahkan kode rahasia Caesar Cipher." },
 }
-Config.DefaultMode = "giliran"
-Config.RotationOrder = { "kotak", "kilat", "firewall", "sandi" }
+Config.DefaultMode = "petualangan"
+Config.AdventureOrder = { "kotak", "kilat", "firewall", "sandi" } -- urutan game di Petualangan
+Config.CompletionBonus = 200 -- bonus untuk siswa yang ikut menjawab di keempat game
+Config.GameBreakTime = 10 -- detik menampilkan hasil tiap game sebelum lanjut ke game berikutnya
 
 function Config.GetMode(id)
 	for _, mode in ipairs(Config.Modes) do
@@ -45,13 +48,13 @@ end
 ---------------------------------------------------------------------
 -- PENGATURAN KUIS
 ---------------------------------------------------------------------
-Config.QuestionsPerRound = 10 -- jumlah soal tiap ronde (Lintasan Firewall selalu FirewallGates soal)
+Config.QuestionsPerRound = 5 -- jumlah soal PER GAME (Lintasan Firewall selalu FirewallGates soal)
 Config.QuestionTime = 20 -- detik soal pilihan ganda (mode Lari & Pilih)
 Config.TrueFalseTime = 12 -- detik soal Benar/Salah (mode Lari & Pilih)
 Config.KilatTime = 10 -- detik per soal mode Kuis Kilat
 Config.SandiTime = 35 -- detik per soal mode Pecahkan Sandi
 Config.SandiAttempts = 3 -- kesempatan mengetik per soal
-Config.FirewallGates = 8 -- jumlah gerbang (soal) di Lintasan Firewall
+Config.FirewallGates = 6 -- jumlah gerbang (soal) di Lintasan Firewall
 Config.FirewallTime = 240 -- batas waktu Lintasan Firewall (detik)
 Config.RevealTime = 3 -- detik animasi jawaban benar
 Config.ExplanationTime = 7 -- detik menampilkan penjelasan materi
@@ -101,11 +104,11 @@ Config.DataStoreName = "NetQuest_KuisJaringan_v1"
 -- Gelar berdasarkan total POIN RANK (Poin Rank = total poin dari semua ronde)
 Config.Ranks = {
 	{ xp = 0, name = "Kabel Pemula", color = Color3.fromRGB(200, 200, 200) },
-	{ xp = 500, name = "Hub Junior", color = Color3.fromRGB(120, 220, 255) },
-	{ xp = 1500, name = "Switch Cekatan", color = Color3.fromRGB(110, 255, 150) },
-	{ xp = 3000, name = "Router Hebat", color = Color3.fromRGB(255, 220, 90) },
-	{ xp = 6000, name = "Server Master", color = Color3.fromRGB(255, 140, 70) },
-	{ xp = 10000, name = "Legenda Internet", color = Color3.fromRGB(255, 90, 220) },
+	{ xp = 1000, name = "Hub Junior", color = Color3.fromRGB(120, 220, 255) },
+	{ xp = 3000, name = "Switch Cekatan", color = Color3.fromRGB(110, 255, 150) },
+	{ xp = 6000, name = "Router Hebat", color = Color3.fromRGB(255, 220, 90) },
+	{ xp = 10000, name = "Server Master", color = Color3.fromRGB(255, 140, 70) },
+	{ xp = 16000, name = "Legenda Internet", color = Color3.fromRGB(255, 90, 220) },
 }
 -- Daftar pet & syarat Poin Rank-nya ada di QuizShared > PetCatalog
 
@@ -113,13 +116,13 @@ Config.Ranks = {
 -- TOPIK MATERI (Informatika Kelas 7 - Jaringan Komputer & Internet)
 ---------------------------------------------------------------------
 Config.Topics = {
-	{ id = "campuran", name = "Campuran (Semua Materi)", icon = "🎲", color = Color3.fromRGB(180, 120, 255) },
-	{ id = "konsep", name = "Konsep Jaringan Komputer", icon = "🖧", color = Color3.fromRGB(80, 170, 255) },
-	{ id = "topologi", name = "Topologi Jaringan", icon = "🕸️", color = Color3.fromRGB(255, 160, 60) },
-	{ id = "perangkat", name = "Perangkat Jaringan", icon = "📡", color = Color3.fromRGB(90, 220, 140) },
-	{ id = "internet", name = "Internet & Cara Kerjanya", icon = "🌐", color = Color3.fromRGB(60, 210, 230) },
-	{ id = "koneksi", name = "Koneksi Kabel & Nirkabel", icon = "📶", color = Color3.fromRGB(255, 210, 70) },
-	{ id = "keamanan", name = "Keamanan & Proteksi Data", icon = "🔒", color = Color3.fromRGB(255, 90, 110) },
+	{ id = "campuran", name = "Campuran (Semua Materi)", color = Color3.fromRGB(180, 120, 255) },
+	{ id = "konsep", name = "Konsep Jaringan Komputer", color = Color3.fromRGB(80, 170, 255) },
+	{ id = "topologi", name = "Topologi Jaringan", color = Color3.fromRGB(255, 160, 60) },
+	{ id = "perangkat", name = "Perangkat Jaringan", color = Color3.fromRGB(90, 220, 140) },
+	{ id = "internet", name = "Internet & Cara Kerjanya", color = Color3.fromRGB(60, 210, 230) },
+	{ id = "koneksi", name = "Koneksi Kabel & Nirkabel", color = Color3.fromRGB(255, 210, 70) },
+	{ id = "keamanan", name = "Keamanan & Proteksi Data", color = Color3.fromRGB(255, 90, 110) },
 }
 
 function Config.GetTopic(id)
